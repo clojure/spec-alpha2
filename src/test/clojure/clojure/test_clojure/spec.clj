@@ -1,7 +1,7 @@
 (ns clojure.test-clojure.spec
-  (:require [clojure.spec :as s]
-            [clojure.spec.gen :as gen]
-            [clojure.spec.test :as stest]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as gen]
+            [clojure.spec.test.alpha :as stest]
             [clojure.test :refer :all]))
 
 (set! *warn-on-reflection* true)
@@ -118,7 +118,7 @@
 
       andre nil nil nil
       andre [] nil nil
-      andre :k :clojure.spec/invalid '[{:pred (& (* keyword?) even-count?), :val :k}]
+      andre :k :clojure.spec.alpha/invalid '[{:pred (& (* keyword?) even-count?), :val :k}]
       andre [:k] ::s/invalid '[{:pred even-count?, :val [:k]}]
       andre [:j :k] [:j :k] nil
 
@@ -173,25 +173,25 @@
   (are [spec form]
     (= (s/form spec) form)
     (s/map-of int? any?)
-    '(clojure.spec/map-of clojure.core/int? clojure.core/any?)
+    '(clojure.spec.alpha/map-of clojure.core/int? clojure.core/any?)
 
     (s/coll-of int?)
-    '(clojure.spec/coll-of clojure.core/int?)
+    '(clojure.spec.alpha/coll-of clojure.core/int?)
 
     (s/every-kv int? int?)
-    '(clojure.spec/every-kv clojure.core/int? clojure.core/int?)
+    '(clojure.spec.alpha/every-kv clojure.core/int? clojure.core/int?)
 
     (s/every int?)
-    '(clojure.spec/every clojure.core/int?)
+    '(clojure.spec.alpha/every clojure.core/int?)
 
     (s/coll-of (s/tuple (s/tuple int?)))
-    '(clojure.spec/coll-of (clojure.spec/tuple (clojure.spec/tuple clojure.core/int?)))
+    '(clojure.spec.alpha/coll-of (clojure.spec.alpha/tuple (clojure.spec.alpha/tuple clojure.core/int?)))
 
     (s/coll-of int? :kind vector?)
-    '(clojure.spec/coll-of clojure.core/int? :kind clojure.core/vector?)
+    '(clojure.spec.alpha/coll-of clojure.core/int? :kind clojure.core/vector?)
 
     (s/coll-of int? :gen #(gen/return [1 2]))
-    '(clojure.spec/coll-of clojure.core/int? :gen (fn* [] (gen/return [1 2])))))
+    '(clojure.spec.alpha/coll-of clojure.core/int? :gen (fn* [] (gen/return [1 2])))))
 
 (comment
   (require '[clojure.test :refer (run-tests)])
