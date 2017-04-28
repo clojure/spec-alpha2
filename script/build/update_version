@@ -2,4 +2,6 @@
 
 set -e
 
-mvn versions:set -DnewVersion=`script/build/revision`-SNAPSHOT
+mvn versions:set -DgenerateBackupPoms=false -DnewVersion=`script/build/revision`-SNAPSHOT
+git commit -m 'update version' pom.xml
+git push
