@@ -2,11 +2,6 @@
 
 set -e
 
-if [[ -n "${IS_M2RELEASEBUILD}" ]]; then
-  echo "Setting version based on git commits"
-  mvn versions:set -DgenerateBackupPoms=false -DnewVersion=`script/build/revision`-SNAPSHOT
-  git commit -m 'update version' pom.xml
-  git push
-else
-  echo "Skipping version set, not a release build"
-fi
+mvn versions:set -DgenerateBackupPoms=false -DnewVersion=`script/build/revision`-SNAPSHOT
+git commit -m 'update version' pom.xml
+git push
