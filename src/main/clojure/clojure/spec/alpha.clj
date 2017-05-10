@@ -672,7 +672,7 @@
   Optionally takes :gen generator-fn, which must be a fn of no args
   that returns a test.check generator."
   
-  [& {:keys [args ret fn gen]}]
+  [& {:keys [args ret fn gen] :or {ret `any?}}]
   `(fspec-impl (spec ~args) '~(res args)
                (spec ~ret) '~(res ret)
                (spec ~fn) '~(res fn) ~gen))
