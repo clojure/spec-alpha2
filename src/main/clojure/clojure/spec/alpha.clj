@@ -606,7 +606,7 @@
   "Returns a regex op that matches zero or one value matching
   pred. Produces a single value (not a collection) if matched."
   [pred-form]
-  `(maybe-impl ~pred-form '~pred-form))
+  `(maybe-impl ~pred-form '~(res pred-form)))
 
 (defmacro alt
   "Takes key+pred pairs, e.g.
@@ -776,7 +776,7 @@
   (let [pred (maybe-spec pred)]
     (if (spec? pred)
       (explain* pred path (if-let [name (spec-name pred)] (conj via name) via) in v)
-      [{:path path :pred (abbrev form) :val v :via via :in in}])))
+      [{:path path :pred form :val v :via via :in in}])))
 
 (defn ^:skip-wiki map-spec-impl
   "Do not call this directly, use 'spec' with a map argument"
@@ -822,7 +822,7 @@
                  [{:path path :pred 'map? :val x :via via :in in}]
                  (let [reg (registry)]
                    (apply concat
-                          (when-let [probs (->> (map (fn [pred form] (when-not (pred x) (abbrev form)))
+                          (when-let [probs (->> (map (fn [pred form] (when-not (pred x) form))
                                                      pred-exprs pred-forms)
                                                 (keep identity)
                                                 seq)]
@@ -890,7 +890,7 @@
                         x))
        (explain* [_ path via in x]
                  (when (invalid? (dt pred x form cpred?))
-                   [{:path path :pred (abbrev form) :val x :via via :in in}]))
+                   [{:path path :pred form :val x :via via :in in}]))
        (gen* [_ _ _ _] (if gfn
                          (gfn)
                          (gen/gen-for-pred pred)))
@@ -926,7 +926,7 @@
                         path (conj path dv)]
                     (if-let [pred (predx x)]
                       (explain-1 form pred path via in x)
-                      [{:path path :pred (abbrev form) :val x :reason "no method" :via via :in in}])))
+                      [{:path path :pred form :val x :reason "no method" :via via :in in}])))
         (gen* [_ overrides path rmap]
               (if gfn
                 (gfn)
@@ -1508,7 +1508,7 @@
                      (list `+ rep+)
                      (cons `cat (mapcat vector (c/or (seq ks) (repeat :_)) forms)))
             ::alt (if maybe
-                    (list `? (res maybe))
+                    (list `? maybe)
                     (cons `alt (mapcat vector ks forms)))
             ::rep (list (if splice `+ `*) forms)))))
 
@@ -1520,7 +1520,7 @@
         insufficient (fn [path form]
                        [{:path path
                          :reason "Insufficient input"
-                         :pred (abbrev form)
+                         :pred form
                          :val ()
                          :via via
                          :in in}])]
@@ -1635,14 +1635,14 @@
             (op-explain (op-describe p) p path via (conj in i) (seq data))
             [{:path path
               :reason "Extra input"
-              :pred (abbrev (op-describe re))
+              :pred (op-describe re)
               :val data
               :via via
               :in (conj in i)}])
           (c/or (op-explain (op-describe p) p path via (conj in i) (seq data))
                 [{:path path
                   :reason "Extra input"
-                  :pred (abbrev (op-describe p))
+                  :pred (op-describe p)
                   :val data
                   :via via
                   :in (conj in i)}]))))))
@@ -1664,7 +1664,7 @@
    (explain* [_ path via in x]
              (if (c/or (nil? x) (coll? x))
                (re-explain path via in re (seq x))
-               [{:path path :pred (abbrev (op-describe re)) :val x :via via :in in}]))
+               [{:path path :pred (op-describe re) :val x :via via :in in}]))
    (gen* [_ overrides path rmap]
          (if gfn
            (gfn)
