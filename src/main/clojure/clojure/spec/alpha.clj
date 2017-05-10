@@ -197,7 +197,9 @@
 (defn explain-data* [spec path via in x]
   (let [probs (explain* (specize spec) path via in x)]
     (when-not (empty? probs)
-      {::problems probs})))
+      {::problems probs
+       ::spec spec
+       ::value x})))
 
 (defn explain-data
   "Given a spec and a value x which ought to conform, returns nil if x
