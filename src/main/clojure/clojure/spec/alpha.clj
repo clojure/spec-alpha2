@@ -1269,7 +1269,15 @@
                             (c/or (nil? vseq) (= i limit)) x
                             (valid? spec v) (recur (inc i) vs)
                             :else ::invalid)))))))
-        (unform* [_ x] x)
+        (unform* [_ x]
+                 (if conform-all
+                   (let [spec @spec
+                         [init add complete] (cfns x)]
+                     (loop [ret (init x), i 0, [v & vs :as vseq] (seq x)]
+                       (if (>= i (c/count x))
+                         (complete ret)
+                         (recur (add ret i v (unform* spec v)) (inc i) vs))))
+                   x))
         (explain* [_ path via in x]
                   (c/or (coll-prob x kind kind-form distinct count min-count max-count
                                    path via in)

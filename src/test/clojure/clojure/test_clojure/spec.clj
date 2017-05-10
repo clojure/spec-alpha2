@@ -193,6 +193,28 @@
     (s/coll-of int? :gen #(gen/return [1 2]))
     '(clojure.spec.alpha/coll-of clojure.core/int? :gen (fn* [] (gen/return [1 2])))))
 
+(deftest coll-conform-unform
+  (check-conform-unform
+    (s/coll-of (s/or :i int? :s string?))
+    [[1 "x"]]
+    [[[:i 1] [:s "x"]]])
+  (check-conform-unform
+    (s/every (s/or :i int? :s string?))
+    [[1 "x"]]
+    [[1 "x"]])
+  (check-conform-unform
+    (s/map-of int? (s/or :i int? :s string?))
+    [{10 10 20 "x"}]
+    [{10 [:i 10] 20 [:s "x"]}])
+  (check-conform-unform
+    (s/map-of (s/or :i int? :s string?) int? :conform-keys true)
+    [{10 10 "x" 20}]
+    [{[:i 10] 10 [:s "x"] 20}])
+  (check-conform-unform
+    (s/every-kv int? (s/or :i int? :s string?))
+    [{10 10 20 "x"}]
+    [{10 10 20 "x"}]))
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)
