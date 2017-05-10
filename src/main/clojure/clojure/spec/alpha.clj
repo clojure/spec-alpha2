@@ -1847,13 +1847,14 @@
                 (gen/large-integer* {:min st# :max et#}))))))
 
 (defn int-in-range?
-  "Return true if start <= val and val < end"
+  "Return true if start <= val, val < end and val is a fixed
+  precision integer."
   [start end val]
   (c/and int? (<= start val) (< val end)))
 
 (defmacro int-in
-  "Returns a spec that validates ints in the range from start
-(inclusive) to end (exclusive)."
+  "Returns a spec that validates fixed precision integers in the
+  range from start (inclusive) to end (exclusive)."
   [start end]
   `(spec (and int? #(int-in-range? ~start ~end %))
      :gen #(gen/large-integer* {:min ~start :max (dec ~end)})))
