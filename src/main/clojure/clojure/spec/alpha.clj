@@ -1834,8 +1834,10 @@
   ([sym n] (exercise-fn sym n (get-spec sym)))
   ([sym-or-f n fspec]
      (let [f (if (symbol? sym-or-f) (resolve sym-or-f) sym-or-f)]
-       (for [args (gen/sample (gen (:args fspec)) n)]
-         [args (apply f args)]))))
+       (if-let [arg-spec (c/and fspec (:args fspec))]
+         (for [args (gen/sample (gen arg-spec) n)]
+           [args (apply f args)])
+         (throw (Exception. "No :args spec found, can't generate"))))))
 
 (defn inst-in-range?
   "Return true if inst at or after start and before end"
