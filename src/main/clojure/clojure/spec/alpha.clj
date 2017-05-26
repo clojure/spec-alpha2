@@ -214,9 +214,9 @@
   "Default printer for explain-data. nil indicates a successful validation."
   [ed]
   (if ed
-    (do
+    (let [problems (sort-by #(- (count (:path %))) (::problems ed))]
       ;;(prn {:ed ed})
-      (doseq [{:keys [path pred val reason via in] :as prob}  (::problems ed)]
+      (doseq [{:keys [path pred val reason via in] :as prob} problems]
         (when-not (empty? in)
           (print "In:" (pr-str in) ""))
         (print "val: ")
