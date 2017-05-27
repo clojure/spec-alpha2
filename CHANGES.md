@@ -1,5 +1,9 @@
 # Change Log for spec.alpha
 
+## Version 0.1.123 on May 26, 2017
+
+* No changes, just a rebuild
+
 ## Version 0.1.109 on May 26, 2017
 
 * [CLJ-2153](https://dev.clojure.org/jira/browse/CLJ-2153) - Docstring for int-in-range? and int-in now mention fixed precision constraint
