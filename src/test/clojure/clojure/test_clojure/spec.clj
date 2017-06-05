@@ -220,6 +220,12 @@
     [{10 10 20 "x"}]
     [{10 10 20 "x"}]))
 
+(deftest &-explain-pred
+  (are [val expected]
+    (= expected (-> (s/explain-data (s/& int? even?) val) ::s/problems first :pred))
+    [] 'clojure.core/int?
+    [0 2] '(clojure.spec.alpha/& clojure.core/int? clojure.core/even?)))
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)
