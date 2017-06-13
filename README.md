@@ -3,12 +3,13 @@ spec.alpha
 
 spec is a Clojure library to describe the structure of data and functions. Specs can be used to validate data, conform (destructure) data, explain invalid data, generate examples that conform to the specs, and automatically use generative testing to test functions.
 
-Clojure 1.9 (still in alpha releases) depends on this library and provides it to users of Clojure. Thus, the recommended way to use this library is to add a dependency on the latest version of Clojure 1.9, rather than including it directly. In some cases, this library may releases more frequently than Clojure. In those cases, you can explictly include the latest version of this library with the dependency info below.
+Clojure 1.9 (still in alpha releases) depends on this library and provides it to users of Clojure. Thus, the recommended way to use this library is to add a dependency on the latest version of Clojure 1.9, rather than including it directly. In some cases, this library may release more frequently than Clojure. In those cases, you can explictly include the latest version of this library with the dependency info below.
 
 For more information:
 
 * Rationale - https://clojure.org/about/spec
 * Guide - https://clojure.org/guides/spec
+* Spec split notice - https://groups.google.com/forum/#!msg/clojure/10dbF7w2IQo/ec37TzP5AQAJ
 
 Releases and Dependency Information
 ========================================
