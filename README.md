@@ -1,10 +1,19 @@
 spec.alpha
 ========================================
 
+spec is a Clojure library to describe the structure of data and functions. Specs can be used to validate data, conform (destructure) data, explain invalid data, generate examples that conform to the specs, and automatically use generative testing to test functions.
+
+Clojure 1.9 (still in alpha releases) depends on this library and provides it to users of Clojure. Thus, the recommended way to use this library is to add a dependency on the latest version of Clojure 1.9, rather than including it directly. In some cases, this library may releases more frequently than Clojure. In those cases, you can explictly include the latest version of this library with the dependency info below.
+
+For more information:
+
+* Rationale - https://clojure.org/about/spec
+* Guide - https://clojure.org/guides/spec
+
 Releases and Dependency Information
 ========================================
 
-Latest stable release: 0.1.109
+Latest stable release: 0.1.123
 
 * [All Released Versions](http://search.maven.org/#search%7Cgav%7C1%7Cg%3A%22org.clojure%22%20AND%20a%3A%22spec.alpha%22)
 
@@ -12,20 +21,22 @@ Latest stable release: 0.1.109
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
-    [org.clojure/spec.alpha "0.1.109"]
+    [org.clojure/spec.alpha "0.1.123"]
 
 [Maven](http://maven.apache.org/) dependency information:
 
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>spec.alpha</artifactId>
-      <version>0.1.109</version>
+      <version>0.1.123</version>
     </dependency>
 
 Developer Information
 ========================================
 
 * [GitHub project](https://github.com/clojure/spec.alpha)
+
+* [Changelog](https://github.com/clojure/spec.alpha/blob/master/CHANGES.md)
 
 * [Bug Tracker](http://dev.clojure.org/jira/browse/CLJ)
 
