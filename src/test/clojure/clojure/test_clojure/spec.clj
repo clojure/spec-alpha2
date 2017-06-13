@@ -110,7 +110,7 @@
 
       opt nil nil nil
       opt [] nil nil
-      opt :k ::s/invalid '[{:pred (clojure.spec.alpha/? clojure.core/keyword?), :val :k}]
+      opt :k ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
       opt [:k] :k nil
       opt [:k1 :k2] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/? clojure.core/keyword?), :val (:k2)}]
       opt [:k1 :k2 "x"] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/? clojure.core/keyword?), :val (:k2 "x")}]
@@ -118,7 +118,7 @@
 
       andre nil nil nil
       andre [] nil nil
-      andre :k :clojure.spec.alpha/invalid '[{:pred (clojure.spec.alpha/& (clojure.spec.alpha/* clojure.core/keyword?) clojure.test-clojure.spec/even-count?), :val :k}]
+      andre :k :clojure.spec.alpha/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
       andre [:k] ::s/invalid '[{:pred clojure.test-clojure.spec/even-count?, :val [:k]}]
       andre [:j :k] [:j :k] nil
 
