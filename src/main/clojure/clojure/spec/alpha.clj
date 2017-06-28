@@ -1187,17 +1187,19 @@
      (c/and distinct (not (empty? x)) (not (apply distinct? x)))
      [{:path path :pred 'distinct? :val x :via via :in in}])))
 
+(def ^:private empty-coll {`vector? [], `set? #{}, `list? (), `map? {}})
+
 (defn ^:skip-wiki every-impl
   "Do not call this directly, use 'every', 'every-kv', 'coll-of' or 'map-of'"
   ([form pred opts] (every-impl form pred opts nil))
-  ([form pred {gen-into :into
+  ([form pred {conform-into :into
                describe-form ::describe
                :keys [kind ::kind-form count max-count min-count distinct gen-max ::kfn ::cpred
                       conform-keys ::conform-all]
                :or {gen-max 20}
                :as opts}
     gfn]
-     (let [conform-into gen-into
+     (let [gen-into (if conform-into (empty conform-into) (get empty-coll kind-form))
            spec (delay (specize pred))
            check? #(valid? @spec %)
            kfn (c/or kfn (fn [i v] i))
@@ -1289,7 +1291,7 @@
                 (let [pgen (gensub pred overrides path rmap form)]
                   (gen/bind
                    (cond
-                    gen-into (gen/return (empty gen-into))
+                    gen-into (gen/return gen-into)
                     kind (gen/fmap #(if (empty? %) % (empty %))
                                    (gensub kind overrides path rmap form))
                     :else (gen/return []))
