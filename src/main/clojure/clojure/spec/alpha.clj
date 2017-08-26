@@ -347,8 +347,6 @@
   [k]
   (get (registry) (if (keyword? k) k (->sym k))))
 
-(declare map-spec)
-
 (defmacro spec
   "Takes a single predicate form, e.g. can be the name of a predicate,
   like even?, or a fn literal like #(< % 42). Note that it is not
