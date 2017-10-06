@@ -1,5 +1,11 @@
 # Change Log for spec.alpha
 
+## Version 0.1.134 on Oct 6, 2017
+
+* [CLJ-2103](https://dev.clojure.org/jira/browse/CLJ-2103) - s/coll-of and s/every gen is very slow if :kind specified without :into
+* [CLJ-2171](https://dev.clojure.org/jira/browse/CLJ-2171) - Default explain printer shouldn't print root val and spec
+* Mark Clojure dependency as a provided dep so it's not transitively included
+
 ## Version 0.1.123 on May 26, 2017
 
 * No changes, just a rebuild

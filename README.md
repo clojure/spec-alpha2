@@ -14,7 +14,7 @@ For more information:
 Releases and Dependency Information
 ========================================
 
-Latest stable release: 0.1.123
+Latest stable release: 0.1.134
 
 * [All Released Versions](http://search.maven.org/#search%7Cgav%7C1%7Cg%3A%22org.clojure%22%20AND%20a%3A%22spec.alpha%22)
 
@@ -22,14 +22,14 @@ Latest stable release: 0.1.123
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
-    [org.clojure/spec.alpha "0.1.123"]
+    [org.clojure/spec.alpha "0.1.134"]
 
 [Maven](http://maven.apache.org/) dependency information:
 
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>spec.alpha</artifactId>
-      <version>0.1.123</version>
+      <version>0.1.134</version>
     </dependency>
 
 Developer Information
