@@ -57,13 +57,38 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+	<version>1.6.0</version>
+	<executions>
+          <execution>
+            <id>compile-clojure</id>
+            <phase>compile</phase>
+            <goals><goal>exec</goal></goals>
+            <configuration>
+              <executable>java</executable>
+              <classpathScope>compile</classpathScope>
+                <arguments>
+                <argument>-Dclojure.compile.path=${project.build.directory}/classes</argument>
+                <argument>-classpath</argument>
+                <classpath/>
+                <argument>clojure.lang.Compile</argument>
+                <argument>clojure.spec.alpha</argument>
+                <argument>clojure.spec.gen.alpha</argument>
+                <argument>clojure.spec.test.alpha</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>com.theoryinpractise</groupId>
         <artifactId>clojure-maven-plugin</artifactId>
         <version>1.7.1</version>
         <executions>
           <execution>
             <id>clojure-compile</id>
-            <phase>compile</phase>
+            <phase>none</phase>
           </execution>
           <execution>
             <id>clojure-test</id>
@@ -71,14 +96,6 @@
           </execution>
         </executions>
 	<configuration>
-          <compileDeclaredNamespaceOnly>true</compileDeclaredNamespaceOnly>
-          <testDeclaredNamespaceOnly>true</testDeclaredNamespaceOnly>
-          <temporaryOutputDirectory>false</temporaryOutputDirectory>
-          <namespaces>
-            <namespace>clojure.spec.alpha</namespace>
-            <namespace>clojure.spec.gen.alpha</namespace>
-            <namespace>clojure.spec.test.alpha</namespace>
-          </namespaces>
           <sourceDirectories>
             <sourceDirectory>src/main/clojure</sourceDirectory>
           </sourceDirectories>
