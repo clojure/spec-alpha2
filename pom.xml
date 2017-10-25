@@ -36,7 +36,7 @@
   </developers>
 
   <properties>
-    <clojure.version>1.9.0-alpha15</clojure.version>
+    <clojure.version>1.9.0-beta3</clojure.version>
   </properties>
 
   <dependencies>
@@ -70,6 +70,7 @@
               <classpathScope>compile</classpathScope>
                 <arguments>
                 <argument>-Dclojure.compile.path=${project.build.directory}/classes</argument>
+                <argument>-Dclojure.spec.skip-macros=true</argument>
                 <argument>-classpath</argument>
                 <classpath/>
                 <argument>clojure.lang.Compile</argument>
