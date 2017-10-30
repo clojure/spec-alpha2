@@ -1,5 +1,9 @@
 # Change Log for spec.alpha
 
+## Version 0.1.143 on Oct 30, 2107
+
+* [CLJ-2259](https://dev.clojure.org/jira/browse/CLJ-2259) - map decimal? to big decimal generator (instead of bigdec?)
+
 ## Version 0.1.134 on Oct 6, 2017
 
 * [CLJ-2103](https://dev.clojure.org/jira/browse/CLJ-2103) - s/coll-of and s/every gen is very slow if :kind specified without :into
