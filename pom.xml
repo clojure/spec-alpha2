@@ -36,7 +36,7 @@
   </developers>
 
   <properties>
-    <clojure.version>1.9.0-RC2</clojure.version>
+    <clojure.version>1.9.0</clojure.version>
   </properties>
 
   <dependencies>
