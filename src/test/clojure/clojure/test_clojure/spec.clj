@@ -67,8 +67,8 @@
       ;; drange Double/NaN ::s/invalid {[] {:pred '(clojure.core/fn [%] (clojure.core/not (Double/isNaN %))), :val Double/NaN}}
 
       keyword? :k :k nil
-      keyword? nil ::s/invalid [{:pred ::s/unknown :val nil}]
-      keyword? "abc" ::s/invalid [{:pred ::s/unknown :val "abc"}]
+      keyword? nil ::s/invalid [{:pred `keyword? :val nil}]
+      keyword? "abc" ::s/invalid [{:pred `keyword? :val "abc"}]
 
       a 6 6 nil
       a 3 ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/> % 5)), :val 3}]
@@ -151,6 +151,16 @@
       coll (map identity [:a :b]) '(:a :b) nil
       ;;coll [:a "b"] ::s/invalid '[{:pred (coll-checker keyword?), :val [:a b]}]
       )))
+
+(deftest describing-evaled-specs
+  (let [sp #{1 2}]
+    (is (= (s/describe sp) (s/form sp) sp)))
+
+  (is (= (s/describe odd?) 'odd?))
+  (is (= (s/form odd?) 'clojure.core/odd?))
+
+  (is (= (s/describe #(odd? %)) ::s/unknown))
+  (is (= (s/form #(odd? %)) ::s/unknown)))
 
 (defn check-conform-unform [spec vals expected-conforms]
   (let [actual-conforms (map #(s/conform spec %) vals)
