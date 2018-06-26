@@ -1,5 +1,18 @@
 # Change Log for spec.alpha
 
+## Version next
+
+* [CLJ-2182](https://dev.clojure.org/jira/browse/CLJ-2182) Always check preds for s/& on nil input
+* [CLJ-2178](https://dev.clojure.org/jira/browse/CLJ-2178) Return resolved pred for s/& explain-data
+* [CLJ-2177](https://dev.clojure.org/jira/browse/CLJ-2177) Return valid resolved pred in s/keys explain-data
+* [CLJ-2167](https://dev.clojure.org/jira/browse/CLJ-2176) Properly check for int? in int-in-range?
+* [CLJ-2166](https://dev.clojure.org/jira/browse/CLJ-2166) added function name to instrument exception map
+* [CLJ-2111](https://dev.clojure.org/jira/browse/CLJ-2111) Clarify docstring for :kind in s/every
+* [CLJ-2068](https://dev.clojure.org/jira/browse/CLJ-2068) Capture form of set and function instances in spec
+* [CLJ-2060](https://dev.clojure.org/jira/browse/CLJ-2060) Remove a spec by s/def of nil
+* [CLJ-2046](https://dev.clojure.org/jira/browse/CLJ-2046) gen random subsets of or'd req keys in map specs
+* [CLJ-2026](https://dev.clojure.org/jira/browse/CLJ-2026) Prevent concurrent loads in dynaload
+
 ## Version 0.1.143 on Oct 30, 2107
 
 * [CLJ-2259](https://dev.clojure.org/jira/browse/CLJ-2259) - map decimal? to big decimal generator (instead of bigdec?)
