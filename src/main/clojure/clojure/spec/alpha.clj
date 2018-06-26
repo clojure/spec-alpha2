@@ -1856,7 +1856,7 @@
   "Return true if start <= val, val < end and val is a fixed
   precision integer."
   [start end val]
-  (c/and int? (<= start val) (< val end)))
+  (c/and (int? val) (<= start val) (< val end)))
 
 (defmacro int-in
   "Returns a spec that validates fixed precision integers in the
