@@ -226,6 +226,9 @@
     [] 'clojure.core/int?
     [0 2] '(clojure.spec.alpha/& clojure.core/int? clojure.core/even?)))
 
+(deftest keys-explain-pred
+  (is (= 'clojure.core/map? (-> (s/explain-data (s/keys :req [::x]) :a) ::s/problems first :pred))))
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)
