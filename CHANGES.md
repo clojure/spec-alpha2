@@ -1,6 +1,6 @@
 # Change Log for spec.alpha
 
-## Version next
+## Version 0.2.168 on June 26, 2018
 
 * [CLJ-2182](https://dev.clojure.org/jira/browse/CLJ-2182) Always check preds for s/& on nil input
 * [CLJ-2178](https://dev.clojure.org/jira/browse/CLJ-2178) Return resolved pred for s/& explain-data
@@ -14,7 +14,7 @@
 * [CLJ-2026](https://dev.clojure.org/jira/browse/CLJ-2026) Prevent concurrent loads in dynaload
 * [CLJ-2176](https://dev.clojure.org/jira/browse/CLJ-2176) s/tuple explain-data :pred problem
 
-## Version 0.1.143 on Oct 30, 2107
+## Version 0.1.143 on Oct 30, 2017
 
 * [CLJ-2259](https://dev.clojure.org/jira/browse/CLJ-2259) - map decimal? to big decimal generator (instead of bigdec?)
 
