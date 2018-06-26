@@ -324,11 +324,13 @@
   "Do not call this directly, use 'def'"
   [k form spec]
   (c/assert (c/and (ident? k) (namespace k)) "k must be namespaced keyword or resolvable symbol")
-  (let [spec (if (c/or (spec? spec) (regex? spec) (get @registry-ref spec))
-               spec
-               (spec-impl form spec nil nil))]
-    (swap! registry-ref assoc k (with-name spec k))
-    k))
+  (if (nil? spec)
+    (swap! registry-ref dissoc k)
+    (let [spec (if (c/or (spec? spec) (regex? spec) (get @registry-ref spec))
+                 spec
+                 (spec-impl form spec nil nil))]
+      (swap! registry-ref assoc k (with-name spec k))))
+  k)
 
 (defn- ns-qualify
   "Qualify symbol s by resolving it or using the current *ns*."
@@ -341,7 +343,8 @@
 (defmacro def
   "Given a namespace-qualified keyword or resolvable symbol k, and a
   spec, spec-name, predicate or regex-op makes an entry in the
-  registry mapping k to the spec"
+  registry mapping k to the spec. Use nil to remove an entry in
+  the registry for k."
   [k spec-form]
   (let [k (if (symbol? k) (ns-qualify k) k)]
     `(def-impl '~k '~(res spec-form) ~spec-form)))

@@ -239,6 +239,11 @@
 (deftest keys-explain-pred
   (is (= 'clojure.core/map? (-> (s/explain-data (s/keys :req [::x]) :a) ::s/problems first :pred))))
 
+(deftest remove-def
+  (is (= ::ABC (s/def ::ABC string?)))
+  (is (= ::ABC (s/def ::ABC nil)))
+  (is (nil? (s/get-spec ::ABC))))
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)
