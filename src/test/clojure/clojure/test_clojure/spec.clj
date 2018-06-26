@@ -290,6 +290,12 @@
               (map (comp vec sort keys first))
               (into #{})))))
 
+(deftest tuple-explain-pred
+  (are [val expected]
+    (= expected (-> (s/explain-data (s/tuple int?) val) ::s/problems first :pred))
+    :a 'clojure.core/vector?
+    [] '(clojure.core/= (clojure.core/count %) 1)))
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)
