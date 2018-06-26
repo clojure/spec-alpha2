@@ -12,6 +12,7 @@
 * [CLJ-2060](https://dev.clojure.org/jira/browse/CLJ-2060) Remove a spec by s/def of nil
 * [CLJ-2046](https://dev.clojure.org/jira/browse/CLJ-2046) gen random subsets of or'd req keys in map specs
 * [CLJ-2026](https://dev.clojure.org/jira/browse/CLJ-2026) Prevent concurrent loads in dynaload
+* [CLJ-2176](https://dev.clojure.org/jira/browse/CLJ-2176) s/tuple explain-data :pred problem
 
 ## Version 0.1.143 on Oct 30, 2107
 
