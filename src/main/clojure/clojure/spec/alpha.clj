@@ -703,9 +703,7 @@
                                        (if-let [name (spec-name arg-spec)] [name] []) [] args)
                    ::args args)]
           (throw (ex-info
-                   (str
-                     "Call to " (->sym v) " did not conform to spec:\n"
-                     (with-out-str (explain-out ed)))
+                   (str "Call to " (->sym v) " did not conform to spec.")
                    ed)))))))
 
 (defmacro fdef
