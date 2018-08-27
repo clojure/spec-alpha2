@@ -123,7 +123,7 @@ failure in instrument."
                        (let [caller (->> (.getStackTrace (Thread/currentThread))
                                          stacktrace-relevant-to-instrument
                                          first)
-                             ed (merge (assoc (s/explain-data* spec [role] [] [] data)
+                             ed (merge (assoc (s/explain-data* spec [] [] [] data)
                                          ::s/fn (->sym v)
                                          ::s/args args
                                          ::s/failure :instrument)
