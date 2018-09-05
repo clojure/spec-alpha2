@@ -1,5 +1,12 @@
 # Change Log for spec.alpha
 
+## Version 0.2.176 on Sept 4, 2018
+
+* [CLJ-2373](https://dev.clojure.org/jira/browse/CLJ-2373) Don't print ex-info into spec errors
+* [CLJ-2391](https://dev.clojure.org/jira/browse/CLJ-2391) Change spec problem line print order
+* [CLJ-2392](https://dev.clojure.org/jira/browse/CLJ-2392) Stop prepending :args to spec problem paths
+* [CLJ-2393](https://dev.clojure.org/jira/browse/CLJ-2393) Sort on descending "in" length before "at" length
+
 ## Version 0.2.168 on June 26, 2018
 
 * [CLJ-2182](https://dev.clojure.org/jira/browse/CLJ-2182) Always check preds for s/& on nil input
