@@ -6,16 +6,16 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec.test.alpha
+(ns clojure.spec-alpha2.test
   (:refer-clojure :exclude [test])
   (:require
    [clojure.pprint :as pp]
-   [clojure.spec.alpha :as s]
-   [clojure.spec.gen.alpha :as gen]
+   [clojure.spec-alpha2 :as s]
+   [clojure.spec-alpha2.gen :as gen]
    [clojure.string :as str]))
 
 (in-ns 'clojure.spec.test.check)
-(in-ns 'clojure.spec.test.alpha)
+(in-ns 'clojure.spec-alpha2.test)
 (alias 'stc 'clojure.spec.test.check)
 
 (defn- throwable?
@@ -107,7 +107,7 @@ interpret-stack-trace-element that are relevant to a
 failure in instrument."
   [elems]
   (let [plumbing? (fn [{:keys [var-scope]}]
-                    (contains? '#{clojure.spec.test.alpha/spec-checking-fn} var-scope))]
+                    (contains? '#{clojure.spec-alpha2.test/spec-checking-fn} var-scope))]
     (sequence (comp (map StackTraceElement->vec)
                     (map interpret-stack-trace-element)
                     (filter :var-scope)

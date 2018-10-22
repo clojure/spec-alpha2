@@ -1,4 +1,6 @@
-# Change Log for spec.alpha
+# Change Log for spec-alpha2
+
+## FORKED from spec.alpha on Oct 22, 2018
 
 ## Version 0.2.176 on Sept 4, 2018
 

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>spec.alpha</artifactId>
+  <artifactId>spec-alpha2</artifactId>
   <version>0.2.177-SNAPSHOT</version>
-  <name>spec.alpha</name>
+  <name>spec-alpha2</name>
   <description>Specification of data and functions</description>
 
   <scm>
-    <connection>scm:git:git://github.com/clojure/spec.alpha.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/clojure/spec.alpha.git</developerConnection>
+    <connection>scm:git:git://github.com/clojure/spec-alpha2.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/clojure/spec-alpha2.git</developerConnection>
     <tag>HEAD</tag>
-    <url>https://github.com/clojure/spec.alpha</url>
+    <url>https://github.com/clojure/spec-alpha2</url>
   </scm>
 
   <licenses>
@@ -74,9 +74,9 @@
                 <argument>-classpath</argument>
                 <classpath />
                 <argument>clojure.lang.Compile</argument>
-                <argument>clojure.spec.alpha</argument>
-                <argument>clojure.spec.gen.alpha</argument>
-                <argument>clojure.spec.test.alpha</argument>
+                <argument>clojure.spec-alpha2</argument>
+                <argument>clojure.spec-alpha2.gen</argument>
+                <argument>clojure.spec-alpha2.test</argument>
               </arguments>
             </configuration>
           </execution>

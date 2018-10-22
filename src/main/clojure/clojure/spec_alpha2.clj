@@ -6,10 +6,10 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec.alpha
+(ns clojure.spec-alpha2
   (:refer-clojure :exclude [+ * and assert or cat def keys merge])
   (:require [clojure.walk :as walk]
-            [clojure.spec.gen.alpha :as gen]
+            [clojure.spec-alpha2.gen :as gen]
             [clojure.string :as str]))
 
 (alias 'c 'clojure.core)
@@ -72,7 +72,7 @@
 (defn spec?
   "returns x if x is a spec object, else logical false"
   [x]
-  (when (instance? clojure.spec.alpha.Spec x)
+  (when (instance? clojure.spec-alpha2.Spec x)
     x))
 
 (defn regex?
@@ -158,7 +158,7 @@
   (identical? ::invalid ret))
 
 (defn conform
-  "Given a spec and a value, returns :clojure.spec.alpha/invalid 
+  "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
 	if value does not match spec, else the (possibly destructured) value."
   [spec x]
   (conform* (specize spec) x))
@@ -660,7 +660,7 @@
 
 (defmacro conformer
   "takes a predicate function with the semantics of conform i.e. it should return either a
-  (possibly converted) value or :clojure.spec.alpha/invalid, and returns a
+  (possibly converted) value or :clojure.spec-alpha2/invalid, and returns a
   spec that uses it as a predicate/conformer. Optionally takes a
   second fn that does unform of result of first"
   ([f] `(spec-impl '(conformer ~(res f)) ~f nil true))
@@ -722,7 +722,7 @@
   by calling get-spec with the var or fully-qualified symbol.
 
   Once registered, function specs are included in doc, checked by
-  instrument, tested by the runner clojure.spec.test.alpha/check, and (if
+  instrument, tested by the runner clojure.spec-alpha2.test/check, and (if
   a macro) used to explain errors during macroexpansion.
 
   Note that :fn specs require the presence of :args and :ret specs to
@@ -739,7 +739,7 @@
                  :sym symbol?)
     :ret symbol?)"
   [fn-sym & specs]
-  `(clojure.spec.alpha/def ~fn-sym (clojure.spec.alpha/fspec ~@specs)))
+  `(clojure.spec-alpha2/def ~fn-sym (clojure.spec-alpha2/fspec ~@specs)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- recur-limit? [rmap id path k]
@@ -1545,7 +1545,7 @@
       (case op
             ::accept nil
             nil p
-            ::amp (list* 'clojure.spec.alpha/& amp forms)
+            ::amp (list* 'clojure.spec-alpha2/& amp forms)
             ::pcat (if rep+
                      (list `+ rep+)
                      (cons `cat (mapcat vector (c/or (seq ks) (repeat :_)) forms)))
@@ -1784,7 +1784,7 @@
      (describe* [_] `(fspec :args ~aform :ret ~rform :fn ~fform)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; non-primitives ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(clojure.spec.alpha/def ::kvs->map (conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
+(clojure.spec-alpha2/def ::kvs->map (conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
 
 (defmacro keys*
   "takes the same arguments as spec/keys and returns a regex op that matches sequences of key/values,
@@ -1802,7 +1802,7 @@
   {:i1 42, :m {:a 1, :c 2, :d 4}, :i2 99}"
   [& kspecs]
   `(let [mspec# (keys ~@kspecs)]
-     (with-gen (clojure.spec.alpha/& (* (cat ::k keyword? ::v any?)) ::kvs->map mspec#)
+     (with-gen (clojure.spec-alpha2/& (* (cat ::k keyword? ::v any?)) ::kvs->map mspec#)
        (fn [] (gen/fmap (fn [m#] (apply concat m#)) (gen mspec#))))))
 
 (defn ^:skip-wiki nonconforming

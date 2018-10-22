@@ -6,7 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec.gen.alpha
+(ns clojure.spec-alpha2.gen
     (:refer-clojure :exclude [boolean bytes cat hash-map list map not-empty set vector
                               char double int keyword symbol string uuid delay shuffle]))
 
@@ -195,8 +195,8 @@ gens, each of which should generate something sequential."
     (get @gen-builtins pred)))
 
 (comment
-  (require :reload 'clojure.spec.gen.alpha)
-  (in-ns 'clojure.spec.gen.alpha)
+  (require :reload 'clojure.spec-alpha2.gen)
+  (in-ns 'clojure.spec-alpha2.gen)
 
   ;; combinators, see call to lazy-combinators above for complete list
   (generate (one-of [(gen-for-pred integer?) (gen-for-pred string?)]))
