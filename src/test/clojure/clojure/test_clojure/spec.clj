@@ -1,7 +1,7 @@
 (ns clojure.test-clojure.spec
-  (:require [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]
-            [clojure.spec.test.alpha :as stest]
+  (:require [clojure.spec-alpha2 :as s]
+            [clojure.spec-alpha2.gen :as gen]
+            [clojure.spec-alpha2.test :as stest]
             [clojure.test :refer :all]))
 
 (set! *warn-on-reflection* true)
@@ -53,11 +53,11 @@
 
       lrange 7 7 nil
       lrange 8 8 nil
-      lrange 42 ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec.alpha/int-in-range? 7 42 %)), :val 42}]
+      lrange 42 ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec-alpha2/int-in-range? 7 42 %)), :val 42}]
 
-      irange #inst "1938" ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec.alpha/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1938"}]
+      irange #inst "1938" ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1938"}]
       irange #inst "1942" #inst "1942" nil
-      irange #inst "1946" ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec.alpha/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1946"}]
+      irange #inst "1946" ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1946"}]
 
       drange 3.0 ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.core/<= 3.1 %)), :val 3.0}]
       drange 3.1 3.1 nil
@@ -85,15 +85,15 @@
       c [:a] ::s/invalid '[{:pred clojure.core/string?, :val :a, :path [:a], :in [0]}]
       c ["a"] ::s/invalid '[{:reason "Insufficient input", :pred clojure.core/keyword?, :val (), :path [:b]}]
       c ["s" :k] '{:a "s" :b :k} nil
-      c ["s" :k 5] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/cat :a clojure.core/string? :b clojure.core/keyword?), :val (5)}]
+      c ["s" :k 5] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/cat :a clojure.core/string? :b clojure.core/keyword?), :val (5)}]
       (s/cat) nil {} nil
-      (s/cat) [5] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/cat), :val (5), :in [0]}]
+      (s/cat) [5] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/cat), :val (5), :in [0]}]
 
-      either nil ::s/invalid '[{:reason "Insufficient input", :pred (clojure.spec.alpha/alt :a clojure.core/string? :b clojure.core/keyword?), :val () :via []}]
-      either [] ::s/invalid '[{:reason "Insufficient input", :pred (clojure.spec.alpha/alt :a clojure.core/string? :b clojure.core/keyword?), :val () :via []}]
+      either nil ::s/invalid '[{:reason "Insufficient input", :pred (clojure.spec-alpha2/alt :a clojure.core/string? :b clojure.core/keyword?), :val () :via []}]
+      either [] ::s/invalid '[{:reason "Insufficient input", :pred (clojure.spec-alpha2/alt :a clojure.core/string? :b clojure.core/keyword?), :val () :via []}]
       either [:k] [:b :k] nil
       either ["s"] [:a "s"] nil
-      either [:b "s"] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/alt :a clojure.core/string? :b clojure.core/keyword?), :val ("s") :via []}]
+      either [:b "s"] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/alt :a clojure.core/string? :b clojure.core/keyword?), :val ("s") :via []}]
 
       star nil [] nil
       star [] [] nil
@@ -113,18 +113,18 @@
       opt [] nil nil
       opt :k ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
       opt [:k] :k nil
-      opt [:k1 :k2] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/? clojure.core/keyword?), :val (:k2)}]
-      opt [:k1 :k2 "x"] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec.alpha/? clojure.core/keyword?), :val (:k2 "x")}]
+      opt [:k1 :k2] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/? clojure.core/keyword?), :val (:k2)}]
+      opt [:k1 :k2 "x"] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/? clojure.core/keyword?), :val (:k2 "x")}]
       opt ["a"] ::s/invalid '[{:pred clojure.core/keyword?, :val "a"}]
 
       andre nil nil nil
       andre [] nil nil
-      andre :k :clojure.spec.alpha/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
+      andre :k ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
       andre [:k] ::s/invalid '[{:pred clojure.test-clojure.spec/even-count?, :val [:k]}]
       andre [:j :k] [:j :k] nil
 
-      andre2 nil :clojure.spec.alpha/invalid [{:pred #{[:a]}, :val []}]
-      andre2 [] :clojure.spec.alpha/invalid [{:pred #{[:a]}, :val []}]
+      andre2 nil ::s/invalid [{:pred #{[:a]}, :val []}]
+      andre2 [] ::s/invalid [{:pred #{[:a]}, :val []}]
       andre2 [:a] [:a] nil
 
       m nil ::s/invalid '[{:pred clojure.core/map?, :val nil}]
@@ -188,25 +188,25 @@
   (are [spec form]
     (= (s/form spec) form)
     (s/map-of int? any?)
-    '(clojure.spec.alpha/map-of clojure.core/int? clojure.core/any?)
+    '(clojure.spec-alpha2/map-of clojure.core/int? clojure.core/any?)
 
     (s/coll-of int?)
-    '(clojure.spec.alpha/coll-of clojure.core/int?)
+    '(clojure.spec-alpha2/coll-of clojure.core/int?)
 
     (s/every-kv int? int?)
-    '(clojure.spec.alpha/every-kv clojure.core/int? clojure.core/int?)
+    '(clojure.spec-alpha2/every-kv clojure.core/int? clojure.core/int?)
 
     (s/every int?)
-    '(clojure.spec.alpha/every clojure.core/int?)
+    '(clojure.spec-alpha2/every clojure.core/int?)
 
     (s/coll-of (s/tuple (s/tuple int?)))
-    '(clojure.spec.alpha/coll-of (clojure.spec.alpha/tuple (clojure.spec.alpha/tuple clojure.core/int?)))
+    '(clojure.spec-alpha2/coll-of (clojure.spec-alpha2/tuple (clojure.spec-alpha2/tuple clojure.core/int?)))
 
     (s/coll-of int? :kind vector?)
-    '(clojure.spec.alpha/coll-of clojure.core/int? :kind clojure.core/vector?)
+    '(clojure.spec-alpha2/coll-of clojure.core/int? :kind clojure.core/vector?)
 
     (s/coll-of int? :gen #(gen/return [1 2]))
-    '(clojure.spec.alpha/coll-of clojure.core/int? :gen (fn* [] (gen/return [1 2])))))
+    '(clojure.spec-alpha2/coll-of clojure.core/int? :gen (fn* [] (gen/return [1 2])))))
 
 (deftest coll-conform-unform
   (check-conform-unform
@@ -234,7 +234,7 @@
   (are [val expected]
     (= expected (-> (s/explain-data (s/& int? even?) val) ::s/problems first :pred))
     [] 'clojure.core/int?
-    [0 2] '(clojure.spec.alpha/& clojure.core/int? clojure.core/even?)))
+    [0 2] '(clojure.spec-alpha2/& clojure.core/int? clojure.core/even?)))
 
 (deftest keys-explain-pred
   (is (= 'clojure.core/map? (-> (s/explain-data (s/keys :req [::x]) :a) ::s/problems first :pred))))
