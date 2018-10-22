@@ -72,7 +72,7 @@
 (defn spec?
   "returns x if x is a spec object, else logical false"
   [x]
-  (when (instance? clojure.spec-alpha2.Spec x)
+  (when (instance? clojure.spec_alpha2.Spec x)
     x))
 
 (defn regex?
