@@ -53,26 +53,26 @@
 
       lrange 7 7 nil
       lrange 8 8 nil
-      lrange 42 ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec-alpha2/int-in-range? 7 42 %)), :val 42}]
+      lrange 42 ::s/invalid [{:pred '(fn [%] (clojure.spec-alpha2/int-in-range? 7 42 %)), :val 42}]
 
-      irange #inst "1938" ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1938"}]
+      irange #inst "1938" ::s/invalid [{:pred '(fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1938"}]
       irange #inst "1942" #inst "1942" nil
-      irange #inst "1946" ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1946"}]
+      irange #inst "1946" ::s/invalid [{:pred '(fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1946"}]
 
-      drange 3.0 ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.core/<= 3.1 %)), :val 3.0}]
+      drange 3.0 ::s/invalid [{:pred '(fn [%] (clojure.core/<= 3.1 %)), :val 3.0}]
       drange 3.1 3.1 nil
       drange 3.2 3.2 nil
-      drange Double/POSITIVE_INFINITY ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.core/not (Double/isInfinite %))), :val Double/POSITIVE_INFINITY}]
+      drange Double/POSITIVE_INFINITY ::s/invalid [{:pred '(fn [%] (clojure.core/not (Double/isInfinite %))), :val Double/POSITIVE_INFINITY}]
       ;; can't use equality-based test for Double/NaN
-      ;; drange Double/NaN ::s/invalid {[] {:pred '(clojure.core/fn [%] (clojure.core/not (Double/isNaN %))), :val Double/NaN}}
+      ;; drange Double/NaN ::s/invalid {[] {:pred '(fn [%] (clojure.core/not (Double/isNaN %))), :val Double/NaN}}
 
       keyword? :k :k nil
       keyword? nil ::s/invalid [{:pred `keyword? :val nil}]
       keyword? "abc" ::s/invalid [{:pred `keyword? :val "abc"}]
 
       a 6 6 nil
-      a 3 ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/> % 5)), :val 3}]
-      a 20 ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/< % 10)), :val 20}]
+      a 3 ::s/invalid '[{:pred (fn [%] (clojure.core/> % 5)), :val 3}]
+      a 20 ::s/invalid '[{:pred (fn [%] (clojure.core/< % 10)), :val 20}]
       a nil "java.lang.NullPointerException" "java.lang.NullPointerException"
       a :k "java.lang.ClassCastException" "java.lang.ClassCastException"
 
@@ -111,7 +111,7 @@
 
       opt nil nil nil
       opt [] nil nil
-      opt :k ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
+      opt :k ::s/invalid '[{:pred (fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
       opt [:k] :k nil
       opt [:k1 :k2] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/? clojure.core/keyword?), :val (:k2)}]
       opt [:k1 :k2 "x"] ::s/invalid '[{:reason "Extra input", :pred (clojure.spec-alpha2/? clojure.core/keyword?), :val (:k2 "x")}]
@@ -119,7 +119,7 @@
 
       andre nil nil nil
       andre [] nil nil
-      andre :k ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
+      andre :k ::s/invalid '[{:pred (fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %))), :val :k}]
       andre [:k] ::s/invalid '[{:pred clojure.test-clojure.spec/even-count?, :val [:k]}]
       andre [:j :k] [:j :k] nil
 
@@ -206,7 +206,7 @@
     '(clojure.spec-alpha2/coll-of clojure.core/int? :kind clojure.core/vector?)
 
     (s/coll-of int? :gen #(gen/return [1 2]))
-    '(clojure.spec-alpha2/coll-of clojure.core/int? :gen (fn* [] (gen/return [1 2])))))
+    '(clojure.spec-alpha2/coll-of clojure.core/int? :gen (fn* [] (clojure.spec-alpha2.gen/return [1 2])))))
 
 (deftest coll-conform-unform
   (check-conform-unform
