@@ -8,7 +8,9 @@
 
 (ns clojure.spec-alpha2
   (:refer-clojure :exclude [+ * and assert or cat def keys merge])
-  (:require [clojure.walk :as walk]
+  (:require [clojure.spec-alpha2.protocols :as protocols
+             :refer [Spec conform* unform* explain* gen* with-gen* describe* Specize specize*]]
+            [clojure.walk :as walk]
             [clojure.spec-alpha2.gen :as gen]
             [clojure.string :as str]))
 
@@ -33,14 +35,6 @@
 (def ^:dynamic *coll-error-limit*
   "The number of errors reported by explain in a collection spec'ed with 'every'"
   20)
-
-(defprotocol Spec
-  (conform* [spec x])
-  (unform* [spec y])
-  (explain* [spec path via in x])
-  (gen* [spec overrides path rmap])
-  (with-gen* [spec gfn])
-  (describe* [spec]))
 
 (defonce ^:private registry-ref (atom {}))
 
@@ -72,7 +66,7 @@
 (defn spec?
   "returns x if x is a spec object, else logical false"
   [x]
-  (when (instance? clojure.spec_alpha2.Spec x)
+  (when (instance? clojure.spec_alpha2.protocols.Spec x)
     x))
 
 (defn regex?
@@ -117,9 +111,6 @@
   (c/or (maybe-spec spec-or-k)
         (when (ident? spec-or-k)
           (throw (Exception. (str "Unable to resolve spec: " spec-or-k))))))
-
-(defprotocol Specize
-  (specize* [_] [_ form]))
 
 (defn- fn-sym [^Object f]
   (let [[_ f-ns f-n] (re-matches #"(.*)\$(.*?)(__[0-9]+)?" (.. f getClass getName))]
