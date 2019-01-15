@@ -1,5 +1,6 @@
 (ns clojure.test-clojure.spec
   (:require [clojure.spec-alpha2 :as s]
+            clojure.spec-alpha2.impl
             [clojure.spec-alpha2.gen :as gen]
             [clojure.spec-alpha2.test :as stest]
             [clojure.test :refer :all]))
@@ -36,7 +37,7 @@
         m (s/map-of keyword? string?)
         mkeys (s/map-of (s/and keyword? (s/conformer name)) any?)
         mkeys2 (s/map-of (s/and keyword? (s/conformer name)) any? :conform-keys true)
-        s (s/coll-of (s/spec (s/cat :tag keyword? :val any?)) :kind list?)
+        s (s/coll-of (s/cat :tag keyword? :val any?) :kind list?)
         v (s/coll-of keyword? :kind vector?)
         coll (s/coll-of keyword?)
         lrange (s/int-in 7 42)
@@ -66,9 +67,9 @@
       ;; can't use equality-based test for Double/NaN
       ;; drange Double/NaN ::s/invalid {[] {:pred '(fn [%] (clojure.core/not (Double/isNaN %))), :val Double/NaN}}
 
-      keyword? :k :k nil
-      keyword? nil ::s/invalid [{:pred `keyword? :val nil}]
-      keyword? "abc" ::s/invalid [{:pred `keyword? :val "abc"}]
+      'keyword? :k :k nil
+      'keyword? nil ::s/invalid [{:pred `keyword? :val nil}]
+      'keyword? "abc" ::s/invalid [{:pred `keyword? :val "abc"}]
 
       a 6 6 nil
       a 3 ::s/invalid '[{:pred (fn [%] (clojure.core/> % 5)), :val 3}]
@@ -156,11 +157,11 @@
   (let [sp #{1 2}]
     (is (= (s/describe sp) (s/form sp) sp)))
 
-  (is (= (s/describe odd?) 'odd?))
-  (is (= (s/form odd?) 'clojure.core/odd?))
+  (is (= (s/describe 'odd?) 'odd?))
+  (is (= (s/form 'odd?) 'clojure.core/odd?))
 
-  (is (= (s/describe #(odd? %)) ::s/unknown))
-  (is (= (s/form #(odd? %)) ::s/unknown)))
+  (is (= (s/describe '#(odd? %)) '(odd? %)))
+  (is (= (s/form '#(odd? %)) '(fn [%] (odd? %)))))
 
 (defn check-conform-unform [spec vals expected-conforms]
   (let [actual-conforms (map #(s/conform spec %) vals)

@@ -36,7 +36,7 @@
   </developers>
 
   <properties>
-    <clojure.version>1.9.0</clojure.version>
+    <clojure.version>1.10.0</clojure.version>
   </properties>
 
   <dependencies>
@@ -74,7 +74,9 @@
                 <argument>-classpath</argument>
                 <classpath />
                 <argument>clojure.lang.Compile</argument>
+                <argument>clojure.spec-alpha2.protocols</argument>
                 <argument>clojure.spec-alpha2</argument>
+                <argument>clojure.spec-alpha2.impl</argument>
                 <argument>clojure.spec-alpha2.gen</argument>
                 <argument>clojure.spec-alpha2.test</argument>
               </arguments>

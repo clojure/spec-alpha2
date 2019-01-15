@@ -9,12 +9,10 @@
 (ns clojure.spec-alpha2.protocols)
 
 (defprotocol Spec
+  :extend-via-metadata true
   (conform* [spec x])
   (unform* [spec y])
   (explain* [spec path via in x])
   (gen* [spec overrides path rmap])
   (with-gen* [spec gfn])
   (describe* [spec]))
-
-(defprotocol Specize
-  (specize* [_] [_ form]))

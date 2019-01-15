@@ -22,10 +22,6 @@
   [x]
   (instance? Throwable x))
 
-(defn ->sym
-  [x]
-  (@#'s/->sym x))
-
 (defn- ->var
   [s-or-v]
   (if (var? s-or-v)
@@ -116,7 +112,7 @@ failure in instrument."
 
 (defn- spec-checking-fn
   [v f fn-spec]
-  (let [fn-spec (@#'s/maybe-spec fn-spec)
+  (let [fn-spec (@#'clojure.spec-alpha2.impl/maybe-spec fn-spec)
         conform! (fn [v role spec data args]
                    (let [conformed (s/conform spec data)]
                      (if (= ::s/invalid conformed)
@@ -124,7 +120,7 @@ failure in instrument."
                                          stacktrace-relevant-to-instrument
                                          first)
                              ed (merge (assoc (s/explain-data* spec [] [] [] data)
-                                         ::s/fn (->sym v)
+                                         ::s/fn (symbol v)
                                          ::s/args args
                                          ::s/failure :instrument)
                                        (when caller
@@ -175,7 +171,7 @@ failure in instrument."
             checked (spec-checking-fn v ofn ospec)]
         (alter-var-root v (constantly checked))
         (swap! instrumented-vars assoc v {:raw to-wrap :wrapped checked})
-        (->sym v)))))
+        (symbol v)))))
 
 (defn- unstrument-1
   [s]
@@ -185,7 +181,7 @@ failure in instrument."
       (let [current @v]
         (when (= wrapped current)
           (alter-var-root v (constantly raw))
-          (->sym v))))))
+          (symbol v))))))
 
 (defn- opt-syms
   "Returns set of symbols referenced by 'instrument' opts map"
@@ -261,7 +257,7 @@ Returns a collection of syms naming the vars instrumented."
   "Undoes instrument on the vars named by sym-or-syms, specified
 as in instrument. With no args, unstruments all instrumented vars.
 Returns a collection of syms naming the vars unstrumented."
-  ([] (unstrument (map ->sym (keys @instrumented-vars))))
+  ([] (unstrument (map symbol (keys @instrumented-vars))))
   ([sym-or-syms]
      (locking instrumented-vars
        (into
@@ -325,7 +321,7 @@ with explain-data + ::s/failure."
   [{:keys [s f v spec]} opts]
   (let [re-inst? (and v (seq (unstrument s)) true)
         f (or f (when v @v))
-        specd (s/spec spec)]
+        specd (#'s/to-spec spec)]
     (try
      (cond
       (or (nil? f) (some-> v meta :macro))
