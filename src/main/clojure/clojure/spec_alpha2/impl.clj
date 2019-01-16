@@ -1295,6 +1295,38 @@
   [[_ pred]]
   (nilable-impl pred nil))
 
+;`(spec (and inst? #(inst-in-range? ~start ~end %))
+;         :gen (fn []
+;                (gen/fmap (fn [d#] (java.util.Date. ^{:tag ~'long} d#))
+;                          (gen/large-integer* {:min (inst-ms ~start) :max (inst-ms ~end)}))))
+
+(defn inst-in-impl
+  ([start end gfn]
+   (reify
+     protocols/Spec
+     (conform* [_ x] (let [ret (and (inst? x) (s/inst-in-range? start end x))]
+                       (if ret x ::invalid)))
+     (unform* [_ x] x)
+     (explain* [_ path via in x]
+       (when (not (and (inst? x) (s/inst-in-range? start end x)))
+         [{:path path :pred `(s/inst-in ~start ~end) :val x :via via :in in}]))
+     (gen* [_ _ _ _]
+       (gen/fmap (fn [^long d] (java.util.Date. d))
+         (gen/large-integer* {:min (inst-ms start) :max (inst-ms end)})))
+     (with-gen* [_ gfn] (if gfn (gfn) (inst-in-impl start end gfn)))
+     (describe* [_] `(s/inst-in ~start ~end)))))
+
+(defmethod s/create-spec `s/inst-in
+  [[_ start end]]
+  (inst-in-impl start end nil))
+
 (comment
   (require '[clojure.spec-alpha2.gen :as gen])
+
+  (s/conform (s/inst-in #inst "2016-01-01" #inst "2017-01-01") #inst "2016-12-01")
+  (s/unform (s/inst-in #inst "2016-01-01" #inst "2017-01-01") #inst "2016-12-01")
+  (s/form (s/inst-in #inst "2016-01-01" #inst "2017-01-01"))
+  (s/explain (s/inst-in #inst "2016-01-01" #inst "2017-01-01") #inst "2000-12-01")
+  (s/exercise (s/inst-in #inst "2016-01-01" #inst "2017-01-01"))
+
   )

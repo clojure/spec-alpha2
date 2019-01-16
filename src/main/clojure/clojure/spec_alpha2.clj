@@ -744,10 +744,7 @@
   "Returns a spec that validates insts in the range from start
 (inclusive) to end (exclusive)."
   [start end]
-  `(spec (and inst? #(inst-in-range? ~start ~end %))
-         :gen (fn []
-                (gen/fmap (fn [d#] (java.util.Date. ^{:tag ~'long} d#))
-                          (gen/large-integer* {:min (inst-ms ~start) :max (inst-ms ~end)})))))
+  `(spec* '~(explicate (ns-name *ns*) `(inst-in ~start ~end))))
 
 (defn int-in-range?
   "Return true if start <= val, val < end and val is a fixed
