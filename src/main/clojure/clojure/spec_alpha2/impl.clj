@@ -115,9 +115,26 @@
   (let [fn-form `(fn ~@fn-tail)]
     (spec-impl (#'s/unfn fn-form) (eval fn-form) nil nil)))
 
-;(defmethod s/create-spec `s/spec
-;  [[_ form & {:keys [gen]}]]
-;  (spec-impl form (s/spec* form) (eval gen) nil))
+(defn- conformer-impl
+  [f-form unf-form gfn]
+  (let [f (eval f-form)
+        unf (when unf-form (eval unf-form))]
+    (reify
+      protocols/Spec
+      (conform* [_ x] (f x))
+      (unform* [_ x] (if unf
+                       (unf x)
+                       (throw (IllegalStateException. "no unform fn for conformer"))))
+      (explain* [_ path via in x]
+        (when (s/invalid? (f x))
+          [{:path path :pred `(s/conformer ~f-form ~@(if unf-form (vector unf-form) nil)) :val x :via via :in in}]))
+      (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred f)))
+      (with-gen* [_ gfn] (conformer-impl f-form unf-form gfn))
+      (describe* [_] `(conformer ~f-form ~@(if unf-form (vector unf-form) nil))))))
+
+(defmethod s/create-spec `s/conformer
+  [[_ f & [unf]]]
+  (conformer-impl f unf nil))
 
 (declare merge-spec-impl)
 
@@ -1280,39 +1297,4 @@
 
 (comment
   (require '[clojure.spec-alpha2.gen :as gen])
-  (s/explicate (ns-name *ns*) '(s/or :i int? :s string?))
-  (s/unform (s/or :i int? :s string?) (s/conform (s/or :i int? :s string?) 10))
-  (s/explain (s/or :i int? :s string?) :k)
-  (s/form (s/or :i int? :s string?))
-
-  (s/conform 'keyword? :k)
-
-  (s/def ::a nat-int?)
-  (s/def ::b boolean?)
-  (s/def ::c keyword?)
-  (s/def ::d double?)
-  (s/def ::e inst?)
-
-  (s/def ::m (s/keys :req [::a ::b ::c]))
-  (s/conform ::m {::a 10 ::b true})
-  (s/unform ::m #:clojure.spec-alpha2.impl{:a 10, :b true})
-  (s/explain ::m {10 20})
-
-  (s/def ::m2 (s/keys :req [::d]))
-  (s/explain (s/merge ::m ::m2) {::a 10 ::b true ::c :a })
-  (s/form (s/merge ::m ::m2))
-
-  (defn adder [x] #(+ x %))
-  (s/fdef adder
-          :args (s/cat :x number?)
-          :ret (s/fspec :args (s/cat :y number?)
-                        :ret number?)
-          :fn #(= (-> % :args :x) ((:ret %) 0)))
-
-  (s/def ::aret  (s/fspec :args (s/cat :y number?)
-                          :ret number?))
-  (s/form ::aret)
-  (s/conform ::aret #(fn [x] x))
-
-
   )
