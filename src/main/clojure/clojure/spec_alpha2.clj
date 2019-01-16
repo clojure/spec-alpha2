@@ -756,8 +756,7 @@
   "Returns a spec that validates fixed precision integers in the
   range from start (inclusive) to end (exclusive)."
   [start end]
-  `(spec (and int? #(int-in-range? ~start ~end %))
-     :gen #(gen/large-integer* {:min ~start :max (dec ~end)})))
+  `(spec* '~(explicate (ns-name *ns*) `(int-in ~start ~end))))
 
 (defmacro double-in
   "Specs a 64-bit floating point number. Options:
