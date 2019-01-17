@@ -18,7 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-(declare spec-impl)
 (declare regex-spec-impl)
 
 (defn- maybe-spec
@@ -45,76 +44,35 @@
     (when (not= "fn" f-n)
       (symbol (clojure.lang.Compiler/demunge f-ns) (clojure.lang.Compiler/demunge f-n)))))
 
-;(extend-protocol Specize
-;  clojure.lang.Keyword
-;  (specize* ([k] (specize* (#'s/reg-resolve! k)))
-;    ([k _] (specize* (#'s/reg-resolve! k))))
-;
-;  clojure.lang.Symbol
-;  (specize* ([s] (specize* (#'s/reg-resolve! s)))
-;    ([s _] (specize* (#'s/reg-resolve! s))))
-;
-;  clojure.lang.IPersistentSet
-;  (specize* ([s] (spec-impl s s nil nil))
-;    ([s form] (spec-impl form s nil nil)))
-;
-;  Object
-;  (specize* ([o] (if (and (not (map? o)) (ifn? o))
-;                   (if-let [s (fn-sym o)]
-;                     (spec-impl s o nil nil)
-;                     (spec-impl ::s/unknown o nil nil))
-;                   (spec-impl ::s/unknown o nil nil)))
-;    ([o form] (spec-impl form o nil nil))))
-
 (declare dt)
 
-(defn ^:skip-wiki spec-impl
-  "Do not call this directly, use 'spec'"
-  ([form pred gfn cpred?] (spec-impl form pred gfn cpred? nil))
-  ([form pred gfn cpred? unc]
-   (cond
-     (s/spec? pred) (cond-> pred gfn (s/with-gen gfn))
-     (s/regex? pred) (regex-spec-impl pred gfn)
-     (ident? pred) (cond-> (the-spec pred) gfn (s/with-gen gfn))
-     :else
-     (reify
-       Spec
-       (conform* [_ x] (let [ret (pred x)]
-                         (if cpred?
-                           ret
-                           (if ret x ::s/invalid))))
-       (unform* [_ x] (if cpred?
-                        (if unc
-                          (unc x)
-                          (throw (IllegalStateException. "no unform fn for conformer")))
-                        x))
-       (explain* [_ path via in x]
-         (when (s/invalid? (dt pred x form cpred?))
-           [{:path path :pred form :val x :via via :in in}]))
-       (gen* [_ _ _ _] (if gfn
-                         (gfn)
-                         (gen/gen-for-pred pred)))
-       (with-gen* [_ gfn] (spec-impl form pred gfn cpred? unc))
-       (describe* [_] form)))))
-
-(defmethod s/create-spec `s/spec
-  [[_ form & {:keys [gen]}]]
-  (spec-impl form (s/spec* form) (eval gen) nil))
+(defn- fn-impl
+  [form gfn]
+  (let [pred (eval form)]
+    (reify
+      Spec
+      (conform* [_ x] (if (pred x) x ::s/invalid))
+      (unform* [_ x] x)
+      (explain* [_ path via in x]
+        (when-not (pred x)
+          [{:path path :pred (#'s/unfn form) :val x :via via :in in}]))
+      (gen* [_ _ _ _] (if gfn
+                        (gfn)
+                        (gen/gen-for-pred pred)))
+      (with-gen* [_ gfn] (fn-impl form gfn))
+      (describe* [_] (#'s/unfn form)))))
 
 (defmethod s/create-spec 'fn*
   [[_ & fn-tail]]
-  (let [fn-form `(fn* ~@fn-tail)]
-    (spec-impl (#'s/unfn fn-form) (eval fn-form) nil nil)))
+  (fn-impl `(fn* ~@fn-tail) nil))
 
 (defmethod s/create-spec `fn
   [[_ & fn-tail]]
-  (let [fn-form `(fn ~@fn-tail)]
-    (spec-impl (#'s/unfn fn-form) (eval fn-form) nil nil)))
+  (fn-impl `(fn* ~@fn-tail) nil))
 
 (defmethod s/create-spec 'fn
   [[_ & fn-tail]]
-  (let [fn-form `(fn ~@fn-tail)]
-    (spec-impl (#'s/unfn fn-form) (eval fn-form) nil nil)))
+  (fn-impl `(fn* ~@fn-tail) nil))
 
 (defn- conformer-impl
   [f-form unf-form gfn]
