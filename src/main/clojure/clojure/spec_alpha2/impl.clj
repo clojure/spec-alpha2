@@ -44,8 +44,6 @@
     (when (not= "fn" f-n)
       (symbol (clojure.lang.Compiler/demunge f-ns) (clojure.lang.Compiler/demunge f-n)))))
 
-(declare dt)
-
 (defn- fn-impl
   [form gfn]
   (let [pred (eval form)]
@@ -95,34 +93,6 @@
   [[_ f & [unf]]]
   (conformer-impl f unf nil))
 
-(declare merge-spec-impl)
-
-(defmethod s/create-spec `s/merge
-  [[_ & pred-forms]]
-  (merge-spec-impl pred-forms (mapv s/spec* pred-forms) nil))
-
-(declare every-impl)
-
-(defmethod s/create-spec `s/every
-  [[_ pred & {:keys [into kind count max-count min-count distinct gen-max gen] :as opts}]]
-  (let [gx (gensym)
-        cpreds (cond-> [(list (or kind `coll?) gx)]
-                       count (conj `(= ~count (bounded-count ~count ~gx)))
-                       (or min-count max-count)
-                       (conj `(<= (or ~min-count 0)
-                                  (bounded-count (if ~max-count (inc ~max-count) ~min-count) ~gx)
-                                  (or ~max-count Integer/MAX_VALUE)))
-
-                       distinct
-                       (conj `(or (empty? ~gx) (apply distinct? ~gx))))
-        cpred `(fn* [~gx] (and ~@cpreds))
-        eopts (-> opts
-                  (dissoc ::s/gen)
-                  (assoc ::s/cpred (eval cpred))
-                  (cond->
-                    kind (assoc :kind (eval kind) ::s/kind-form kind)))]
-    (every-impl pred eopts gen)))
-
 (declare cat-impl alt-impl rep-impl rep+impl maybe-impl amp-impl)
 
 (defmethod s/create-spec `s/*
@@ -156,14 +126,6 @@
 (defmethod s/create-spec 'clojure.spec-alpha2/&
   [[_ re & preds]]
   (amp-impl (s/spec* re) re (mapv eval preds) (mapv #'s/unfn preds)))
-
-(declare fspec-impl)
-
-(defmethod s/create-spec `s/fspec
-  [[_ & {:keys [args ret fn gen] :or {ret `any?}}]]
-  (fspec-impl (s/spec* args) args
-              (s/spec* ret) ret
-              (s/spec* fn) fn (eval gen)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- recur-limit? [rmap id path k]
@@ -199,6 +161,17 @@
     (if (s/spec? pred)
       (explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v)
       [{:path path :pred form :val v :via via :in in}])))
+
+(defn- explain-pred-list
+  [forms preds path via in x]
+  (loop [ret x
+         [form & forms] forms
+         [pred & preds] preds]
+    (when pred
+      (let [nret (dt pred ret form)]
+        (if (s/invalid? nret)
+          (explain-1 form pred path via in ret)
+          (recur nret forms preds))))))
 
 (declare or-k-gen and-k-gen)
 
@@ -531,8 +504,6 @@
   [[_ & key-pred-forms]]
   (or-spec-impl key-pred-forms nil))
 
-(declare explain-pred-list)
-
 (defn ^:skip-wiki and-spec-impl
   "Do not call this directly, use 'and'"
   [forms gfn]
@@ -601,6 +572,10 @@
                                 preds forms)))))
     (with-gen* [_ gfn] (merge-spec-impl forms preds gfn))
     (describe* [_] `(s/merge ~@forms))))
+
+(defmethod s/create-spec `s/merge
+  [[_ & pred-forms]]
+  (merge-spec-impl pred-forms (mapv s/spec* pred-forms) nil))
 
 (defn- coll-prob [x kfn kform distinct count min-count max-count
                   path via in]
@@ -745,6 +720,26 @@
 
        (with-gen* [_ gfn] (every-impl form opts gfn))
        (describe* [_] describe-form)))))
+
+(defmethod s/create-spec `s/every
+  [[_ pred & {:keys [into kind count max-count min-count distinct gen-max gen] :as opts}]]
+  (let [gx (gensym)
+        cpreds (cond-> [(list (or kind `coll?) gx)]
+                       count (conj `(= ~count (bounded-count ~count ~gx)))
+                       (or min-count max-count)
+                       (conj `(<= (or ~min-count 0)
+                                  (bounded-count (if ~max-count (inc ~max-count) ~min-count) ~gx)
+                                  (or ~max-count Integer/MAX_VALUE)))
+
+                       distinct
+                       (conj `(or (empty? ~gx) (apply distinct? ~gx))))
+        cpred `(fn* [~gx] (and ~@cpreds))
+        eopts (-> opts
+                  (dissoc ::s/gen)
+                  (assoc ::s/cpred (eval cpred))
+                  (cond->
+                    kind (assoc :kind (eval kind) ::s/kind-form kind)))]
+    (every-impl pred eopts gen)))
 
 ;;;;;;;;;;;;;;;;;;;;;;; regex ;;;;;;;;;;;;;;;;;;;
 ;;See:
@@ -975,17 +970,6 @@
                 (cons `s/alt (mapcat vector ks forms)))
         ::s/rep (list (if splice `s/+ `s/*) forms)))))
 
-(defn- explain-pred-list
-  [forms preds path via in x]
-  (loop [ret x
-         [form & forms] forms
-         [pred & preds] preds]
-    (when pred
-      (let [nret (dt pred ret form)]
-        (if (s/invalid? nret)
-          (explain-1 form pred path via in ret)
-          (recur nret forms preds))))))
-
 (defn- op-explain [form p path via in input]
   ;;(prn {:form form :p p :path path :input input})
   (let [[x :as input] input
@@ -1206,6 +1190,12 @@
                                     (gen/generate (s/gen retspec overrides))))))
       (with-gen* [_ gfn] (fspec-impl argspec aform retspec rform fnspec fform gfn))
       (describe* [_] `(fspec :args ~aform :ret ~rform :fn ~fform)))))
+
+(defmethod s/create-spec `s/fspec
+  [[_ & {:keys [args ret fn gen] :or {ret `any?}}]]
+  (fspec-impl (s/spec* args) args
+              (s/spec* ret) ret
+              (s/spec* fn) fn (eval gen)))
 
 (defn ^:skip-wiki nonconforming-impl
   ([spec]

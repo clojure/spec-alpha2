@@ -105,7 +105,67 @@
   [ret]
   (identical? ::invalid ret))
 
-(declare spec*)
+(defn- unfn [expr]
+  (if (c/and (seq? expr)
+             (symbol? (first expr))
+             (= "fn*" (name (first expr))))
+    (let [[[s] & form] (rest expr)]
+      (conj (walk/postwalk-replace {s '%} form) '[%] 'fn))
+    expr))
+
+(defn- res [form]
+  (walk/postwalk
+    #(cond
+       (keyword? %) %
+       (symbol? %) (c/or (some-> % resolve symbol) %)
+       (sequential? %) (unfn %)
+       :else %)
+    form))
+
+(defmulti create-spec
+          (fn [qform] (first qform)))
+
+(defn- pred-impl
+  ([sym]
+   (pred-impl sym nil))
+  ([sym gfn]
+   (let [pred (deref (find-var sym))]
+     (reify
+       protocols/Spec
+       (conform* [_ x] (let [ret (pred x)] (if ret x ::invalid)))
+       (unform* [_ x] x)
+       (explain* [_ path via in x]
+         (when (not (pred x))
+           [{:path path :pred sym :val x :via via :in in}]))
+       (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred pred)))
+       (with-gen* [_ gfn] (pred-impl sym gfn))
+       (describe* [_] sym)))))
+
+(defn- set-impl
+  ([set-vals]
+   (set-impl set-vals nil))
+  ([set-vals gfn]
+   (let [pred #(contains? set-vals %)]
+     (reify
+       protocols/Spec
+       (conform* [_ x] (let [ret (pred x)] (if ret x ::invalid)))
+       (unform* [_ x] x)
+       (explain* [_ path via in x]
+         (when (not (pred x))
+           [{:path path :pred set-vals :val x :via via :in in}]))
+       (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred set-vals)))
+       (with-gen* [_ gfn] (set-impl set-vals gfn))
+       (describe* [_] set-vals)))))
+
+(defn spec*
+  [qform]
+  (cond
+    (keyword? qform) (reg-resolve! qform)
+    (symbol? qform) (pred-impl (res qform))
+    (c/or (list? qform) (seq? qform)) (create-spec qform)
+    (set? qform) (set-impl qform)
+    (nil? qform) nil
+    :else (throw (IllegalStateException. (str "Unknown spec of type: " (class qform))))))
 
 (defn- to-spec [x]
   (if (spec? x) x (spec* x)))
@@ -222,7 +282,14 @@
   [spec x]
   (with-out-str (explain spec x)))
 
-(declare valid?)
+(defn valid?
+  "Helper function that returns true when x is valid for spec."
+  ([spec x]
+   (let [spec (to-spec spec)]
+     (not (invalid? (conform* spec x)))))
+  ([spec x form]
+   (let [spec (to-spec spec form)]
+     (not (invalid? (conform* spec x))))))
 
 (defn- gensub
   [spec overrides path rmap form]
@@ -250,23 +317,6 @@
   ([spec] (gen spec nil))
   ([spec overrides] (gensub spec overrides [] {::recursion-limit *recursion-limit*} spec)))
 
-(defn- unfn [expr]
-  (if (c/and (seq? expr)
-             (symbol? (first expr))
-             (= "fn*" (name (first expr))))
-    (let [[[s] & form] (rest expr)]
-      (conj (walk/postwalk-replace {s '%} form) '[%] 'fn))
-    expr))
-
-(defn- res [form]
-  (walk/postwalk
-    #(cond
-       (keyword? %) %
-       (symbol? %) (c/or (some-> % resolve symbol) %)
-       (sequential? %) (unfn %)
-       :else %)
-    form))
-
 (defn- explicate-1 [a-ns form]
   (walk/postwalk
     #(cond
@@ -289,51 +339,6 @@
     (c/or (some-> (get (ns-aliases *ns*) ns-sym) str (symbol (name s)))
           s)
     (symbol (str (.name *ns*)) (str s))))
-
-(defn- pred-impl
-  ([sym]
-    (pred-impl sym nil))
-  ([sym gfn]
-   (let [pred (deref (find-var sym))]
-     (reify
-       protocols/Spec
-       (conform* [_ x] (let [ret (pred x)] (if ret x ::invalid)))
-       (unform* [_ x] x)
-       (explain* [_ path via in x]
-         (when (not (pred x))
-           [{:path path :pred sym :val x :via via :in in}]))
-       (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred pred)))
-       (with-gen* [_ gfn] (pred-impl sym gfn))
-       (describe* [_] sym)))))
-
-(defn- set-impl
-  ([set-vals]
-   (set-impl set-vals nil))
-  ([set-vals gfn]
-   (let [pred #(contains? set-vals %)]
-     (reify
-       protocols/Spec
-       (conform* [_ x] (let [ret (pred x)] (if ret x ::invalid)))
-       (unform* [_ x] x)
-       (explain* [_ path via in x]
-         (when (not (pred x))
-           [{:path path :pred set-vals :val x :via via :in in}]))
-       (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred set-vals)))
-       (with-gen* [_ gfn] (set-impl set-vals gfn))
-       (describe* [_] set-vals)))))
-
-(defmulti create-spec
-  (fn [qform] (first qform)))
-
-(defn spec*
-  [qform]
-  (cond
-    (keyword? qform) (reg-resolve! qform)
-    (symbol? qform) (pred-impl (res qform))
-    (c/or (list? qform) (seq? qform)) (create-spec qform)
-    (set? qform) (set-impl qform)
-    (nil? qform) nil
-    :else (throw (IllegalStateException. (str "Unknown spec of type: " (class qform))))))
 
 (defn ^:skip-wiki def-impl
   "Do not call this directly, use 'def'"
@@ -552,15 +557,6 @@
     :ret symbol?)"
   [fn-sym & specs]
   `(clojure.spec-alpha2/def ~fn-sym (clojure.spec-alpha2/fspec ~@specs)))
-
-(defn valid?
-  "Helper function that returns true when x is valid for spec."
-  ([spec x]
-     (let [spec (to-spec spec)]
-       (not (invalid? (conform* spec x)))))
-  ([spec x form]
-     (let [spec (to-spec spec form)]
-       (not (invalid? (conform* spec x))))))
 
 (defmacro keys
   "Creates and returns a map validating spec. :req and :opt are both
