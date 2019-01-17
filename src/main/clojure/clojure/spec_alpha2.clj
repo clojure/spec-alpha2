@@ -354,25 +354,6 @@
   (let [k (if (symbol? k) (ns-qualify k) k)]
     `(def-impl '~k '~(explicate (ns-name *ns*) spec-form))))
 
-;; TODO: remove
-(defmacro spec
-  "Takes a single predicate form, e.g. can be the name of a predicate,
-  like even?, or a fn literal like #(< % 42). Note that it is not
-  generally necessary to wrap predicates in spec when using the rest
-  of the spec macros, only to attach a unique generator
-
-  Can also be passed the result of one of the regex ops -
-  cat, alt, *, +, ?, in which case it will return a regex-conforming
-  spec, useful when nesting an independent regex.
-  ---
-
-  Optionally takes :gen generator-fn, which must be a fn of no args that
-  returns a test.check generator.
-
-  Returns a spec."
-  [& form+opts]
-  `(spec* '~(explicate (ns-name *ns*) `(spec ~@form+opts))))
-
 (defmacro merge
   "Takes map-validating specs (e.g. 'keys' specs) and
   returns a spec that returns a conformed map satisfying all of the
