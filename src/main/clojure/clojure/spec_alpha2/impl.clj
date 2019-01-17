@@ -6,7 +6,8 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec-alpha2.impl
+(ns ^{:skip-wiki true}
+  clojure.spec-alpha2.impl
   (:require
     [clojure.spec-alpha2 :as s]
     [clojure.spec-alpha2.protocols :as protocols
@@ -1295,57 +1296,44 @@
   [[_ pred]]
   (nilable-impl pred nil))
 
-(defn inst-in-impl
-  [start end gfn]
+(defn custom-spec-impl
+  "Construct a custom spec op from a (possibly composite) spec used for conforming,
+  a describe form used as the spec form, and a generator function."
+  [spec describe-form gen]
   (reify
     protocols/Spec
-    (conform* [_ x] (let [ret (and (inst? x) (s/inst-in-range? start end x))]
-                      (if ret x ::invalid)))
+    (conform* [_ x] (if (s/valid? spec x) x ::s/invalid))
     (unform* [_ x] x)
-    (explain* [_ path via in x]
-      (when (not (and (inst? x) (s/inst-in-range? start end x)))
-        [{:path path :pred `(s/inst-in ~start ~end) :val x :via via :in in}]))
-    (gen* [_ _ _ _]
-      (if gfn
-        (gfn)
-        (gen/fmap (fn [^long d] (java.util.Date. d))
-          (gen/large-integer* {:min (inst-ms start) :max (inst-ms end)}))))
-    (with-gen* [_ gfn] (inst-in-impl start end gfn))
-    (describe* [_] `(s/inst-in ~start ~end))))
+    (explain* [_ path via in x] (protocols/explain* spec path via in x))
+    (gen* [_ _ _ _] (gen))
+    (with-gen* [_ gfn] (custom-spec-impl spec describe-form gfn))
+    (describe* [_] describe-form)))
 
 (defmethod s/create-spec `s/inst-in
   [[_ start end]]
-  (inst-in-impl start end nil))
-
-(defn int-in-impl
-  [start end gfn]
-  (reify
-    protocols/Spec
-    (conform* [_ x] (let [ret (and (int? x) (s/int-in-range? start end x))]
-                      (if ret x ::invalid)))
-    (unform* [_ x] x)
-    (explain* [_ path via in x]
-      (when (not (and (int? x) (s/int-in-range? start end x)))
-        [{:path path :pred `(s/int-in ~start ~end) :val x :via via :in in}]))
-    (gen* [_ _ _ _]
-      (if gfn
-        (gfn)
-        (gen/large-integer* {:min start :max (dec end)})))
-    (with-gen* [_ gfn] (int-in-impl start end gfn))
-    (describe* [_] `(s/int-in ~start ~end))))
+  (custom-spec-impl
+    (s/spec* (s/explicate (ns-name *ns*) `(s/and inst? #(s/inst-in-range? ~start ~end %))))
+    `(s/inst-in ~start ~end)
+    #(gen/fmap (fn [^long d] (java.util.Date. d))
+      (gen/large-integer* {:min (inst-ms start) :max (inst-ms end)}))))
 
 (defmethod s/create-spec `s/int-in
   [[_ start end]]
-  (int-in-impl start end nil))
+  (custom-spec-impl
+    (s/spec* (s/explicate (ns-name *ns*) `(s/and int? #(s/int-in-range? ~start ~end %))))
+    `(s/int-in ~start ~end)
+    #(gen/large-integer* {:min start :max (dec end)})))
 
-(comment
-  (require '[clojure.spec-alpha2.gen :as gen])
-
-  (s/conform (s/int-in 10 20) 15)
-  (s/unform (s/int-in 10 20) 15)
-  (s/form (s/int-in 10 20))
-  (s/explain (s/int-in 10 20) 1)
-  (s/form (s/int-in 10 20))
-  (s/exercise (s/with-gen (s/int-in 10 20) #(s/gen #{15})))
-
-  )
+(defmethod s/create-spec `s/double-in
+  [[_ & {:keys [infinite? NaN? min max]
+         :or {infinite? true NaN? true}
+         :as m}]]
+  (custom-spec-impl
+    (s/spec* (s/explicate (ns-name *ns*)
+                          `(s/and double?
+                                  ~@(when-not infinite? '[#(not (Double/isInfinite %))])
+                                  ~@(when-not NaN? '[#(not (Double/isNaN %))])
+                                  ~@(when max `[#(<= % ~max)])
+                                  ~@(when min `[#(<= ~min %)]))))
+    `(s/double-in ~@(mapcat identity m))
+    #(gen/double* m)))

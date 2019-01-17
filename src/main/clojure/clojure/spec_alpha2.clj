@@ -765,15 +765,8 @@
     :NaN?      - whether NaN allowed (default true)
     :min       - minimum value (inclusive, default none)
     :max       - maximum value (inclusive, default none)"
-  [& {:keys [infinite? NaN? min max]
-    :or {infinite? true NaN? true}
-    :as m}]
-  `(spec (and c/double?
-              ~@(when-not infinite? '[#(not (Double/isInfinite %))])
-              ~@(when-not NaN? '[#(not (Double/isNaN %))])
-              ~@(when max `[#(<= % ~max)])
-              ~@(when min `[#(<= ~min %)]))
-         :gen #(gen/double* ~m)))
+  [& opts]
+  `(spec* '~(explicate (ns-name *ns*) `(double-in ~@opts))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; assert ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defonce
