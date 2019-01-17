@@ -1126,6 +1126,16 @@
     (with-gen* [_ gfn] (regex-spec-impl re gfn))
     (describe* [_] (op-describe re))))
 
+(s/def ::s/kvs->map (s/conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
+
+(defmethod s/create-spec `s/keys*
+  [[_ & kspecs]]
+  (s/with-gen
+    (s/spec* `(s/& (s/* (s/cat ::k keyword? ::v any?))
+                   ::s/kvs->map
+                   (s/keys ~@kspecs)))
+    #(gen/fmap (fn [m] (apply concat m)) (s/gen `(s/keys ~@kspecs)))))
+
 ;;;;;;;;;;;;;;;;; HOFs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- call-valid?

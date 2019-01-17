@@ -220,7 +220,6 @@
   (let [spec (reg-resolve spec)]
     (if (regex? spec)
       (assoc spec ::gfn gen-fn)
-      ;; TODO: reconsider
       (with-gen* (to-spec spec) gen-fn))))
 
 (defn explain-data* [spec path via in x]
@@ -652,9 +651,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; non-primitives ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: inlined
-;;(clojure.spec-alpha2/def ::kvs->map (conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
-
 (defmacro keys*
   "takes the same arguments as spec/keys and returns a regex op that matches sequences of key/values,
   converts them into a map, and conforms that map with a corresponding
@@ -670,11 +666,7 @@
   user=> (s/conform (s/cat :i1 integer? :m (s/keys* :req-un [::a ::c]) :i2 integer?) [42 :a 1 :c 2 :d 4 99])
   {:i1 42, :m {:a 1, :c 2, :d 4}, :i2 99}"
   [& kspecs]
-  `(let [mspec# (keys ~@kspecs)]
-     (with-gen (clojure.spec-alpha2/& (* (cat ::k keyword? ::v any?))
-                                      (conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %))
-                                      mspec#)
-       (fn [] (gen/fmap (fn [m#] (apply concat m#)) (gen mspec#))))))
+  `(spec* '~(explicate (ns-name *ns*) `(keys* ~@kspecs))))
 
 (defmacro nonconforming
   "takes a spec and returns a spec that has the same properties except
