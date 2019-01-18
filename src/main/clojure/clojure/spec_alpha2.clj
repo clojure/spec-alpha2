@@ -798,4 +798,5 @@ set. You can toggle check-asserts? with (check-asserts bool)."
        ~x)
     x))
 
-
+;; Load the spec op implementations
+(load "/clojure/spec_alpha2/impl")

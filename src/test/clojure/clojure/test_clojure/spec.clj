@@ -1,6 +1,5 @@
 (ns clojure.test-clojure.spec
   (:require [clojure.spec-alpha2 :as s]
-            clojure.spec-alpha2.impl
             [clojure.spec-alpha2.gen :as gen]
             [clojure.spec-alpha2.test :as stest]
             [clojure.test :refer :all]))
