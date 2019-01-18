@@ -13,7 +13,6 @@
     [clojure.spec-alpha2.protocols :as protocols
      :refer [Spec conform* unform* explain* gen* with-gen* describe*]]
     [clojure.spec-alpha2.gen :as gen]
-    [clojure.string :as str]
     [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)

@@ -11,8 +11,7 @@
   (:require [clojure.spec-alpha2.protocols :as protocols
              :refer [conform* unform* explain* gen* with-gen* describe*]]
             [clojure.walk :as walk]
-            [clojure.spec-alpha2.gen :as gen]
-            [clojure.string :as str])
+            [clojure.spec-alpha2.gen :as gen])
   (:import [clojure.spec_alpha2.protocols Spec]))
 
 (alias 'c 'clojure.core)
