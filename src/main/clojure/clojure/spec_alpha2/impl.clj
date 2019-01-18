@@ -201,7 +201,7 @@
   [s]
   (apply gen/tuple (map k-gen s)))
 
-(defn ^:skip-wiki map-spec-impl
+(defn- map-spec-impl
   "Do not call this directly, use 'spec' with a map argument"
   [{:keys [req-un opt-un keys-pred pred-exprs opt-keys req-specs req req-keys opt-specs pred-forms opt gfn]
     :as argm}]
@@ -338,7 +338,7 @@
   [[_ re]]
   (nest-impl re nil))
 
-(defn ^:skip-wiki multi-spec-impl
+(defn- multi-spec-impl
   "Do not call this directly, use 'multi-spec'"
   ([form mmvar retag] (multi-spec-impl form mmvar retag nil))
   ([form mmvar retag gfn]
@@ -388,7 +388,7 @@
   [[_ mm retag]]
   (multi-spec-impl mm (find-var mm) retag))
 
-(defn tuple-impl
+(defn- tuple-impl
   "Do not call this directly, use 'tuple'"
   ([forms] (tuple-impl forms nil))
   ([forms gfn]
@@ -453,7 +453,7 @@
 (defn- tagged-ret [tag ret]
   (clojure.lang.MapEntry. tag ret))
 
-(defn ^:skip-wiki or-spec-impl
+(defn- or-spec-impl
   "Do not call this directly, use 'or'"
   [key-forms gfn]
   (let [pairs (partition 2 key-forms)
@@ -523,7 +523,7 @@
   [[_ & key-pred-forms]]
   (or-spec-impl key-pred-forms nil))
 
-(defn ^:skip-wiki and-spec-impl
+(defn- and-spec-impl
   "Do not call this directly, use 'and'"
   [forms gfn]
   (let [specs (delay (mapv s/spec* forms))
@@ -568,7 +568,7 @@
   [[_ & pred-forms]]
   (and-spec-impl pred-forms nil))
 
-(defn ^:skip-wiki merge-spec-impl
+(defn- merge-spec-impl
   "Do not call this directly, use 'merge'"
   [forms preds gfn]
   (reify
@@ -618,7 +618,7 @@
 
 (def ^:private empty-coll {`vector? [], `set? #{}, `list? (), `map? {}})
 
-(defn ^:skip-wiki every-impl
+(defn- every-impl
   "Do not call this directly, use 'every', 'every-kv', 'coll-of' or 'map-of'"
   ([form opts] (every-impl form opts nil))
   ([form {conform-into :into
@@ -811,7 +811,7 @@
 
 (defn- pcat [& ps] (pcat* {:ps ps :ret []}))
 
-(defn ^:skip-wiki cat-impl
+(defn- cat-impl
   "Do not call this directly, use 'cat'"
   [ks ps forms]
   (pcat* {:ks ks, :ps ps, :forms forms, :ret {}}))
@@ -823,17 +823,17 @@
         (assoc r :p1 p2 :ret (conj ret (:ret p1)))
         (assoc r :p1 p1, :ret ret)))))
 
-(defn ^:skip-wiki rep-impl
+(defn- rep-impl
   "Do not call this directly, use '*'"
   [form p]
   (rep* p p [] false form))
 
-(defn ^:skip-wiki rep+impl
+(defn- rep+impl
   "Do not call this directly, use '+'"
   [form p]
   (pcat* {:ps [p (rep* p p [] true form)] :forms `[~form (s/* ~form)] :ret [] :rep+ form}))
 
-(defn ^:skip-wiki amp-impl
+(defn- amp-impl
   "Do not call this directly, use '&'"
   [re re-form preds pred-forms]
   (as-regex-spec {::s/op ::s/amp :p1 re :amp re-form :ps preds :forms pred-forms}))
@@ -862,11 +862,11 @@
 (defn- alts [& ps] (alt* ps nil nil))
 (defn- alt2 [p1 p2] (if (and p1 p2) (alts p1 p2) (or p1 p2)))
 
-(defn ^:skip-wiki alt-impl
+(defn- alt-impl
   "Do not call this directly, use 'alt'"
   [ks ps forms] (assoc (alt* ps ks forms) :id (java.util.UUID/randomUUID)))
 
-(defn ^:skip-wiki maybe-impl
+(defn- maybe-impl
   "Do not call this directly, use '?'"
   [p form] (assoc (alt* [p (accept ::s/nil)] nil [form ::s/nil]) :maybe form))
 
@@ -1124,7 +1124,7 @@
                   :via via
                   :in (conj in i)}]))))))
 
-(defn ^:skip-wiki regex-spec-impl
+(defn- regex-spec-impl
   "Do not call this directly, use 'spec' with a regex op argument"
   [re gfn]
   (reify
@@ -1178,7 +1178,7 @@
         smallest
         f))))
 
-(defn ^:skip-wiki fspec-impl
+(defn- fspec-impl
   "Do not call this directly, use 'fspec'"
   [argspec aform retspec rform fnspec fform gfn]
   (let [specs {:args argspec :ret retspec :fn fnspec}]
@@ -1226,7 +1226,7 @@
               (s/spec* ret) ret
               (s/spec* fn) fn (eval gen)))
 
-(defn ^:skip-wiki nonconforming-impl
+(defn- nonconforming-impl
   ([spec]
     (nonconforming-impl spec nil))
   ([spec gfn]
@@ -1247,7 +1247,7 @@
   [[_ spec]]
   (nonconforming-impl spec))
 
-(defn ^:skip-wiki nilable-impl
+(defn- nilable-impl
   "Do not call this directly, use 'nilable'"
   [form gfn]
   (let [spec (delay (s/spec* form))]
@@ -1273,7 +1273,7 @@
   [[_ pred]]
   (nilable-impl pred nil))
 
-(defn custom-spec-impl
+(defn- custom-spec-impl
   "Construct a custom spec op from a (possibly composite) spec used for conforming,
   a describe form used as the spec form, and a generator function."
   [spec describe-form gen]
