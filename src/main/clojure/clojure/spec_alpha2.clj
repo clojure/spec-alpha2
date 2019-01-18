@@ -485,6 +485,12 @@
   [re & preds]
   `(spec* '~(explicate (ns-name *ns*) `(clojure.spec-alpha2/& ~re ~@preds))))
 
+(defmacro nest
+  "takes a regex op and returns a non-regex op that describes a nested
+  sequential collection."
+  [re]
+  `(spec* '~(explicate (ns-name *ns*) `(nest ~re))))
+
 (defmacro conformer
   "takes a predicate function with the semantics of conform i.e. it should return either a
   (possibly converted) value or :clojure.spec-alpha2/invalid, and returns a

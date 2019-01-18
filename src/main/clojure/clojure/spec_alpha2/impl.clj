@@ -319,6 +319,25 @@
                     :keys-pred (eval keys-pred)
                     :gfn (eval gen)})))
 
+(defn- nest-impl
+  [re-form gfn]
+  (let [spec (delay (s/spec* re-form))]
+    (reify
+      Spec
+      (conform* [_ x] (conform* @spec x))
+      (unform* [_ x] (unform* @spec x))
+      (explain* [_ path via in x] (explain* @spec path via in x))
+      (gen* [_ overrides path rmap]
+        (if gfn
+          (gfn)
+          (gen* @spec overrides path rmap)))
+      (with-gen* [_ gfn] (nest-impl re-form gfn))
+      (describe* [_] `(s/nest ~(describe* @spec))))))
+
+(defmethod s/create-spec `s/nest
+  [[_ re]]
+  (nest-impl re nil))
+
 (defn ^:skip-wiki multi-spec-impl
   "Do not call this directly, use 'multi-spec'"
   ([form mmvar retag] (multi-spec-impl form mmvar retag nil))
