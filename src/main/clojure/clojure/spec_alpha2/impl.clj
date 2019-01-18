@@ -35,12 +35,6 @@
       (when (ident? spec-or-k)
         (throw (Exception. (str "Unable to resolve spec: " spec-or-k))))))
 
-(defn- fn-sym [^Object f]
-  (let [[_ f-ns f-n] (re-matches #"(.*)\$(.*?)(__[0-9]+)?" (.. f getClass getName))]
-    ;; check for anonymous function
-    (when (not= "fn" f-n)
-      (symbol (clojure.lang.Compiler/demunge f-ns) (clojure.lang.Compiler/demunge f-n)))))
-
 (defn- fn-impl
   [form gfn]
   (let [pred (eval form)]
