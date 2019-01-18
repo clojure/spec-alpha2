@@ -416,7 +416,7 @@
 
   See also - every, map-of"
   [pred & opts]
-  `(spec* '~(explicate (ns-name *ns*) `(map-of ~pred ~@opts))))
+  `(spec* '~(explicate (ns-name *ns*) `(coll-of ~pred ~@opts))))
 
 (defmacro map-of
   "Returns a spec for a map whose keys satisfy kpred and vals satisfy
