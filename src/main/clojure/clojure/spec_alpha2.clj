@@ -157,6 +157,8 @@
        (describe* [_] set-vals)))))
 
 (defn spec*
+  "Returns a spec object given a fully-qualified spec op form, symbol, set,
+  or registry identifier. If needed, use 'explicate' to qualify forms."
   [qform]
   (cond
     (keyword? qform) (reg-resolve! qform)
@@ -164,7 +166,7 @@
     (c/or (list? qform) (seq? qform)) (create-spec qform)
     (set? qform) (set-impl qform)
     (nil? qform) nil
-    :else (throw (IllegalStateException. (str "Unknown spec of type: " (class qform))))))
+    :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- to-spec [x]
   (if (spec? x) x (spec* x)))
