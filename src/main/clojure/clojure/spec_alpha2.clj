@@ -344,7 +344,7 @@
   "Do not call this directly, use 'def'"
   [k form]
   (c/assert (c/and (ident? k) (namespace k)) "k must be namespaced keyword or resolvable symbol")
-  (let [spec (spec* form)]
+  (let [spec (if (keyword? form) form (spec* form))]
     (if (nil? spec)
       (swap! registry-ref dissoc k)
       (swap! registry-ref assoc k (with-name spec k))))
@@ -352,9 +352,8 @@
 
 (defmacro def
   "Given a namespace-qualified keyword or resolvable symbol k, and a
-  spec, spec-name, predicate or regex-op makes an entry in the
-  registry mapping k to the spec. Use nil to remove an entry in
-  the registry for k."
+  spec-name, set, or spec-op makes an entry in the registry mapping k
+  to the spec. Use nil to remove an entry in the registry for k."
   [k spec-form]
   (let [k (if (symbol? k) (ns-qualify k) k)]
     `(def-impl '~k '~(explicate (ns-name *ns*) spec-form))))
