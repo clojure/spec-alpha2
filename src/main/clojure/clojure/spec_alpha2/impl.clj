@@ -63,6 +63,14 @@
   [[_ & fn-tail]]
   (fn-impl `(fn* ~@fn-tail) nil))
 
+(defmethod s/create-spec `s/with-gen
+  [[_ spec gen-fn]]
+  (let [spec (s/spec* spec)
+        g (eval gen-fn)]
+    (if (s/regex? spec)
+      (assoc spec ::gfn g)
+      (protocols/with-gen* spec g))))
+
 (defn- conformer-impl
   [f-form unf-form gfn]
   (let [f (eval f-form)

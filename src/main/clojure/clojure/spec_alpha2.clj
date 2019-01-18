@@ -215,14 +215,6 @@
   [spec]
   (abbrev (form spec)))
 
-(defn with-gen
-  "Takes a spec and a no-arg, generator-returning fn and returns a version of that spec that uses that generator"
-  [spec gen-fn]
-  (let [spec (reg-resolve spec)]
-    (if (regex? spec)
-      (assoc spec ::gfn gen-fn)
-      (with-gen* (to-spec spec) gen-fn))))
-
 (defn explain-data* [spec path via in x]
   (let [probs (explain* (to-spec spec) path via in x)]
     (when-not (empty? probs)
@@ -355,6 +347,11 @@
   [k spec-form]
   (let [k (if (symbol? k) (ns-qualify k) k)]
     `(def-impl '~k '~(explicate (ns-name *ns*) spec-form))))
+
+(defmacro with-gen
+  "Takes a spec and a no-arg, generator-returning fn and returns a version of that spec that uses that generator"
+  [spec gen-fn]
+  `(spec* '~(explicate (ns-name *ns*) `(with-gen ~spec ~gen-fn))))
 
 (defmacro merge
   "Takes map-validating specs (e.g. 'keys' specs) and
