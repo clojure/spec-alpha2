@@ -273,7 +273,7 @@ Returns a collection of syms naming the vars unstrumented."
   [args spec v role]
   (ex-info
    "Specification-based check failed"
-   (when-not (s/valid? spec v nil)
+   (when-not (s/valid? spec v)
      (assoc (s/explain-data* spec [role] [] [] v)
        ::args args
        ::val v

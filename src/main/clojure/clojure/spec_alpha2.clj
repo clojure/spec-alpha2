@@ -284,12 +284,9 @@
 
 (defn valid?
   "Helper function that returns true when x is valid for spec."
-  ([spec x]
-   (let [spec (to-spec spec)]
-     (not (invalid? (conform* spec x)))))
-  ([spec x form]
-   (let [spec (to-spec spec form)]
-     (not (invalid? (conform* spec x))))))
+  [spec x]
+  (let [spec (to-spec spec)]
+    (not (invalid? (conform* spec x)))))
 
 (defn- gensub
   [spec overrides path rmap form]
