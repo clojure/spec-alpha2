@@ -17,8 +17,6 @@
 
 (set! *warn-on-reflection* true)
 
-(declare regex-spec-impl)
-
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
   [spec-or-k]
@@ -27,7 +25,7 @@
                 (s/regex? spec-or-k)
                 nil)]
     (if (s/regex? s)
-      (#'s/with-name (regex-spec-impl s nil) (#'s/spec-name s))
+      (#'s/with-name s (#'s/spec-name s))
       s)))
 
 (defn- the-spec
@@ -1122,27 +1120,6 @@
                   :val data
                   :via via
                   :in (conj in i)}]))))))
-
-(defn- regex-spec-impl
-  "Do not call this directly, use 'spec' with a regex op argument"
-  [re gfn]
-  (reify
-    Spec
-    (conform* [_ x]
-      (if (or (nil? x) (sequential? x))
-        (re-conform re (seq x))
-        ::s/invalid))
-    (unform* [_ x] (op-unform re x))
-    (explain* [_ path via in x]
-      (if (or (nil? x) (sequential? x))
-        (re-explain path via in re (seq x))
-        [{:path path :pred (#'s/res `#(or (nil? %) (sequential? %))) :val x :via via :in in}]))
-    (gen* [_ overrides path rmap]
-      (if gfn
-        (gfn)
-        (re-gen re overrides path rmap (op-describe re))))
-    (with-gen* [_ gfn] (regex-spec-impl re gfn))
-    (describe* [_] (op-describe re))))
 
 (s/def ::s/kvs->map (s/conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
 
