@@ -751,6 +751,31 @@
                     kind (assoc :kind (eval kind) ::s/kind-form kind)))]
     (every-impl pred eopts gen)))
 
+(defmethod s/create-spec `s/every-kv
+  [[_ kpred vpred & opts]]
+  (s/create-spec (concat [`s/every `(s/tuple ~kpred ~vpred)]
+                         opts
+                         [::s/kfn (fn [i# v#] (nth v# 0))
+                          :into {}
+                          ::s/describe `(s/every-kv ~kpred ~vpred ~@opts)])))
+
+(defmethod s/create-spec `s/coll-of
+  [[_ pred & opts]]
+  (s/create-spec (concat [`s/every pred]
+                         opts
+                         [::s/conform-all true
+                          ::s/describe `(s/coll-of ~pred ~@opts)])))
+
+(defmethod s/create-spec `s/map-of
+  [[_ kpred vpred & opts]]
+  (s/create-spec (concat [`s/every `(s/tuple ~kpred ~vpred)]
+                         opts
+                         [::s/kfn (fn [i# v#] (nth v# 0))
+                          :into {}
+                          ::s/conform-all true
+                          :kind `map?
+                          ::s/describe `(s/map-of ~kpred ~vpred ~@opts)])))
+
 ;;;;;;;;;;;;;;;;;;;;;;; regex ;;;;;;;;;;;;;;;;;;;
 ;;See:
 ;; http://matt.might.net/articles/implementation-of-regular-expression-matching-in-scheme-with-derivatives/

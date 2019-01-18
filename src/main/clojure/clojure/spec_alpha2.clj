@@ -404,9 +404,7 @@
 
   See also - map-of"
   [kpred vpred & opts]
-  `(spec* '~(explicate (ns-name *ns*)
-                      `(every (tuple ~kpred ~vpred) ::kfn (fn [i# v#] (nth v# 0)) :into {}
-                              ::describe (every-kv ~kpred ~vpred ~@opts) ~@opts))))
+  `(spec* '~(explicate (ns-name *ns*) `(every-kv ~kpred ~vpred ~@opts))))
 
 (defmacro coll-of
   "Returns a spec for a collection of items satisfying pred. Unlike
@@ -418,7 +416,7 @@
 
   See also - every, map-of"
   [pred & opts]
-  `(spec* '~(explicate (ns-name *ns*) `(every ~pred ::conform-all true ::describe (coll-of ~pred ~@opts) ~@opts))))
+  `(spec* '~(explicate (ns-name *ns*) `(map-of ~pred ~@opts))))
 
 (defmacro map-of
   "Returns a spec for a map whose keys satisfy kpred and vals satisfy
@@ -431,10 +429,7 @@
 
   See also - every-kv"
   [kpred vpred & opts]
-  `(spec* '~(explicate (ns-name *ns*)
-                      `(every (tuple ~kpred ~vpred) ::kfn (fn [i# v#] (nth v# 0)) :into {}
-                              ::conform-all true :kind map?
-                              ::describe (map-of ~kpred ~vpred ~@opts) ~@opts))))
+  `(spec* '~(explicate (ns-name *ns*) `(map-of ~kpred ~vpred ~@opts))))
 
 (defmacro *
   "Returns a regex op that matches zero or more values matching
