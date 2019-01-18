@@ -8,8 +8,19 @@ For more information:
 * Rationale - https://clojure.org/about/spec
 * Guide - https://clojure.org/guides/spec
 
+
 Releases and Dependency Information
 ========================================
+
+Development release:
+
+Try the work in progress as a git dep:
+
+    clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.10.0"}
+                        org.clojure/test.check {:mvn/version "0.9.0"} 
+                        org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git" 
+                                                 :sha "5d162202b4aa4df960bcfa36bf8eb1ecea4dee57"}}}'
+
 
 Latest stable release: TBD
 
