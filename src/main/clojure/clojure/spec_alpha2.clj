@@ -323,6 +323,7 @@
     form))
 
 (defn explicate
+  "Return a fully-qualified form given a namespace name context and a form"
   [ns-name form]
   (let [a-ns (find-ns ns-name)]
     (if (sequential? form)
