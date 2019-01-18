@@ -1272,8 +1272,8 @@
   [[_ pred]]
   (nilable-impl pred nil))
 
-(defn- custom-spec-impl
-  "Construct a custom spec op from a (possibly composite) spec used for conforming,
+(defn- composite-spec-impl
+  "Construct a composite spec op from a spec used for conforming,
   a describe form used as the spec form, and a generator function."
   [spec describe-form gen]
   (reify
@@ -1282,12 +1282,12 @@
     (unform* [_ x] x)
     (explain* [_ path via in x] (protocols/explain* spec path via in x))
     (gen* [_ _ _ _] (gen))
-    (with-gen* [_ gfn] (custom-spec-impl spec describe-form gfn))
+    (with-gen* [_ gfn] (composite-spec-impl spec describe-form gfn))
     (describe* [_] describe-form)))
 
 (defmethod s/create-spec `s/inst-in
   [[_ start end]]
-  (custom-spec-impl
+  (composite-spec-impl
     (s/spec* (s/explicate (ns-name *ns*) `(s/and inst? #(s/inst-in-range? ~start ~end %))))
     `(s/inst-in ~start ~end)
     #(gen/fmap (fn [^long d] (java.util.Date. d))
@@ -1295,7 +1295,7 @@
 
 (defmethod s/create-spec `s/int-in
   [[_ start end]]
-  (custom-spec-impl
+  (composite-spec-impl
     (s/spec* (s/explicate (ns-name *ns*) `(s/and int? #(s/int-in-range? ~start ~end %))))
     `(s/int-in ~start ~end)
     #(gen/large-integer* {:min start :max (dec end)})))
@@ -1304,7 +1304,7 @@
   [[_ & {:keys [infinite? NaN? min max]
          :or {infinite? true NaN? true}
          :as m}]]
-  (custom-spec-impl
+  (composite-spec-impl
     (s/spec* (s/explicate (ns-name *ns*)
                           `(s/and double?
                                   ~@(when-not infinite? '[#(not (Double/isInfinite %))])
