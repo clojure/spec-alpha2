@@ -8,7 +8,7 @@ For more information:
 * Rationale - https://clojure.org/about/spec
 * Guide - https://clojure.org/guides/spec (for spec.alpha, note namespaces and other differences below)
 
-spec.alpha was released with Clojure 1.9 and can be found at https://github.com/clojure/spec.alpha. spec-alpha2 incorporates feedback from spec.alpha as well as work towards several new features. Please note that spec-alpha2 is not API-compatible with spec.alpha (although it is similar).
+spec.alpha was released with Clojure 1.9 and can be found at https://github.com/clojure/spec.alpha. spec-alpha2 incorporates feedback from spec.alpha as well as work towards several new features. Please note that spec-alpha2 is not 100% API-compatible with spec.alpha (although it is similar).
 
 Namespaces to load:
 
@@ -18,9 +18,9 @@ Namespaces to load:
 
 Differences from spec.alpha:
 
-* Spec API functions (`conform`, `explain`, etc) no longer accept unquoted symbols referring to predicates. However, quoted symbols are valid: `(s/conform 'int? 10)`. Note that this does not apply to symbols used within other spec ops (like s/and).
+* Spec API functions (`conform`, `explain`, etc) no longer accept unquoted symbols or anonymous functions as predicates. However, quoted symbols and functions are valid: `(s/conform 'int? 10)` or `(s/conform '#(> % 5) 100)`. Note that this does not apply to symbols or functions used inside other spec ops (like s/and).
 * `s/spec` has been removed. Use `s/nest` if you need to introduce a nested collection spec within a regex op.
-* Because Clojure itself does not know about spec-alpha2 yet, certain integration features will not work as expected (`doc` won't see the registry, errors will not print spec problems appropriately, macros will not be automatically checked).
+* Because Clojure itself does not know about spec-alpha2, certain integration features will not work as expected (`doc` won't see the registry, error stack reporting may not print the correct failure location during instrumentation, and macros will not be automatically checked).
 
 Releases and Dependency Information
 ========================================
