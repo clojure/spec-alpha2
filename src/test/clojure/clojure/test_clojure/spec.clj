@@ -4,6 +4,7 @@
             [clojure.spec-alpha2.test :as stest]
             [clojure.test :refer :all]))
 
+(alias 'sa 'clojure.spec.alpha)
 (set! *warn-on-reflection* true)
 
 (defmacro result-or-ex [x]
@@ -45,7 +46,7 @@
         ]
     (are [spec x conformed ed]
       (let [co (result-or-ex (s/conform spec x))
-            e (result-or-ex (::s/problems (s/explain-data spec x)))]
+            e (result-or-ex (::sa/problems (s/explain-data spec x)))]
         (when (not= conformed co) (println "conform fail\n\texpect=" conformed "\n\tactual=" co))
         (when (not (every? true? (map submap? ed e)))
           (println "explain failures\n\texpect=" ed "\n\tactual failures=" e "\n\tsubmap?=" (map submap? ed e)))
@@ -232,12 +233,12 @@
 
 (deftest &-explain-pred
   (are [val expected]
-    (= expected (-> (s/explain-data (s/& int? even?) val) ::s/problems first :pred))
+    (= expected (-> (s/explain-data (s/& int? even?) val) ::sa/problems first :pred))
     [] 'clojure.core/int?
     [0 2] '(clojure.spec-alpha2/& clojure.core/int? clojure.core/even?)))
 
 (deftest keys-explain-pred
-  (is (= 'clojure.core/map? (-> (s/explain-data (s/keys :req [::x]) :a) ::s/problems first :pred))))
+  (is (= 'clojure.core/map? (-> (s/explain-data (s/keys :req [::x]) :a) ::sa/problems first :pred))))
 
 (deftest remove-def
   (is (= ::ABC (s/def ::ABC string?)))
@@ -292,7 +293,7 @@
 
 (deftest tuple-explain-pred
   (are [val expected]
-    (= expected (-> (s/explain-data (s/tuple int?) val) ::s/problems first :pred))
+    (= expected (-> (s/explain-data (s/tuple int?) val) ::sa/problems first :pred))
     :a 'clojure.core/vector?
     [] '(clojure.core/= (clojure.core/count %) 1)))
 

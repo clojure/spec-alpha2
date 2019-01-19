@@ -15,6 +15,7 @@
   (:import [clojure.spec_alpha2.protocols Spec]))
 
 (alias 'c 'clojure.core)
+(alias 'sa 'clojure.spec.alpha)
 
 (def ^:dynamic *recursion-limit*
   "A soft limit on how many times a branching spec (or/alt/*/opt-keys/multi-spec)
@@ -218,9 +219,9 @@
 (defn explain-data* [spec path via in x]
   (let [probs (explain* (to-spec spec) path via in x)]
     (when-not (empty? probs)
-      {::problems probs
-       ::spec spec
-       ::value x})))
+      {::sa/problems probs
+       ::sa/spec spec
+       ::sa/value x})))
 
 (defn explain-data
   "Given a spec and a value x which ought to conform, returns nil if x
@@ -235,7 +236,7 @@
   "Default printer for explain-data. nil indicates a successful validation."
   [ed]
   (if ed
-    (let [problems (->> (::problems ed)
+    (let [problems (->> (::sa/problems ed)
                      (sort-by #(- (count (:in %))))
                      (sort-by #(- (count (:path %)))))]
       ;;(prn {:ed ed})
@@ -291,7 +292,7 @@
       (gen/such-that #(valid? spec %) g 100)
       (let [abbr (abbrev form)]
         (throw (ex-info (str "Unable to construct gen at: " path " for: " abbr)
-                        {::path path ::form form ::failure :no-gen}))))))
+                        {::sa/path path ::sa/form form ::sa/failure :no-gen}))))))
 
 (defn gen
   "Given a spec, returns the generator for it, or throws if none can
@@ -513,7 +514,7 @@
       (when (invalid? (conform arg-spec args))
         (let [ed (assoc (explain-data* arg-spec []
                                        (if-let [name (spec-name arg-spec)] [name] []) [] args)
-                   ::args args)]
+                   ::sa/args args)]
           (throw (ex-info
                    (str "Call to " (symbol v) " did not conform to spec.")
                    ed)))))))
@@ -765,7 +766,7 @@ system property. Defaults to false."
   (if (valid? spec x)
     x
     (let [ed (c/merge (assoc (explain-data* spec [] [] [] x)
-                        ::failure :assertion-failed))]
+                        ::sa/failure :assertion-failed))]
       (throw (ex-info
               (str "Spec assertion failed\n" (with-out-str (explain-out ed)))
               ed)))))

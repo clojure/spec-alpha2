@@ -17,6 +17,7 @@
 (in-ns 'clojure.spec.test.check)
 (in-ns 'clojure.spec-alpha2.test)
 (alias 'stc 'clojure.spec.test.check)
+(alias 'sa 'clojure.spec.alpha)
 
 (defn- throwable?
   [x]
@@ -120,9 +121,9 @@ failure in instrument."
                                          stacktrace-relevant-to-instrument
                                          first)
                              ed (merge (assoc (s/explain-data* spec [] [] [] data)
-                                         ::s/fn (symbol v)
-                                         ::s/args args
-                                         ::s/failure :instrument)
+                                         ::sa/fn (symbol v)
+                                         ::sa/args args
+                                         ::sa/failure :instrument)
                                        (when caller
                                          {::caller (dissoc caller :class :method)}))]
                          (throw (ex-info
@@ -141,7 +142,7 @@ failure in instrument."
 (defn- no-fspec
   [v spec]
   (ex-info (str "Fn at " v " is not spec'ed.")
-           {:var v :spec spec ::s/failure :no-fspec}))
+           {:var v :spec spec ::sa/failure :no-fspec}))
 
 (defonce ^:private instrumented-vars (atom {}))
 
@@ -277,7 +278,7 @@ Returns a collection of syms naming the vars unstrumented."
      (assoc (s/explain-data* spec [role] [] [] v)
        ::args args
        ::val v
-       ::s/failure :check-failed))))
+       ::sa/failure :check-failed))))
 
 (defn- check-call
   "Returns true if call passes specs, otherwise *returns* an exception
@@ -325,7 +326,7 @@ with explain-data + ::s/failure."
     (try
      (cond
       (or (nil? f) (some-> v meta :macro))
-      {:failure (ex-info "No fn to spec" {::s/failure :no-fn})
+      {:failure (ex-info "No fn to spec" {::sa/failure :no-fn})
        :sym s :spec spec}
     
       (:args specd)
@@ -333,7 +334,7 @@ with explain-data + ::s/failure."
         (make-check-result s spec tcret))
     
       :default
-      {:failure (ex-info "No :args spec" {::s/failure :no-args-spec})
+      {:failure (ex-info "No :args spec" {::sa/failure :no-args-spec})
        :sym s :spec spec})
      (finally
       (when re-inst? (instrument s))))))
@@ -411,7 +412,7 @@ spec itself will have an ::s/failure value in ex-data:
 
 (defn- failure-type
   [x]
-  (::s/failure (ex-data x)))
+  (::sa/failure (ex-data x)))
 
 (defn- unwrap-failure
   [x]
