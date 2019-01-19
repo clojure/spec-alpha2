@@ -6,15 +6,28 @@ spec is a Clojure library to describe the structure of data and functions. Specs
 For more information:
 
 * Rationale - https://clojure.org/about/spec
-* Guide - https://clojure.org/guides/spec
+* Guide - https://clojure.org/guides/spec (for spec.alpha, note namespaces and other differences below)
 
+spec.alpha was released with Clojure 1.9 and can be found at https://github.com/clojure/spec.alpha. spec-alpha2 incorporates feedback from spec.alpha as well as work towards several new features. Please note that spec-alpha2 is not API-compatible with spec.alpha (although it is similar).
+
+Namespaces to load:
+
+    (require '[clojure.spec-alpha2 :as s]
+             '[clojure.spec-alpha2.gen :as gen]
+             '[clojure.spec-alpha2.test :as test])
+
+Differences from spec.alpha:
+
+* Spec API functions (`conform`, `explain`, etc) no longer accept unquoted symbols referring to predicates. However, quoted symbols are valid: `(s/conform 'int? 10)`. Note that this does not apply to symbols used within other spec ops (like s/and).
+* `s/spec` has been removed. Use `s/nest` if you need to introduce a nested collection spec within a regex op.
+* Because Clojure itself does not know about spec-alpha2 yet, certain integration features will not work as expected (`doc` won't see the registry, errors will not print spec problems appropriately, macros will not be automatically checked).
 
 Releases and Dependency Information
 ========================================
 
 Development release:
 
-Try the work in progress as a git dep:
+During development, you cna use the git dep to try spec-alpha2:
 
     clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.10.0"}
                         org.clojure/test.check {:mvn/version "0.9.0"} 
