@@ -18,8 +18,8 @@ Namespaces to load:
 
 Differences from spec.alpha:
 
-* Spec API functions (`conform`, `explain`, etc) no longer accept unquoted symbols or anonymous functions as predicates. However, quoted symbols and functions are valid: `(s/conform 'int? 10)` or `(s/conform '#(> % 5) 100)`. Note that this does not apply to symbols or functions used inside other spec ops (like s/and).
-* `s/spec` has been removed. Use `s/nest` if you need to introduce a nested collection spec within a regex op.
+* Spec API functions (`conform`, `explain`, etc) now accept only values that eval to spec objects or keywords (this excludes symbols, sets, and anonymous functions). Use the `s/spec` op around those to turn them into specs.
+* Rather than `s/spec`, use `s/nest` if you need to introduce a nested collection spec within a regex op.
 * Because Clojure itself does not know about spec-alpha2, certain integration features will not work as expected (`doc` won't see the registry, error stack reporting may not print the correct failure location during instrumentation, and macros will not be automatically checked).
 
 Releases and Dependency Information
@@ -42,17 +42,17 @@ Latest stable release: TBD
 
 [deps.edn](https://clojure.org/guides/deps_and_cli) dependency information:
 
-    org.clojure/spec.alpha {:mvn/version "TBD"}
+    org.clojure/spec-alpha2 {:mvn/version "TBD"}
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
-    [org.clojure/spec.alpha "TBD"]
+    [org.clojure/spec-alpha2 "TBD"]
 
 [Maven](http://maven.apache.org/) dependency information:
 
     <dependency>
       <groupId>org.clojure</groupId>
-      <artifactId>spec.alpha</artifactId>
+      <artifactId>spec-alpha2</artifactId>
       <version>TBD</version>
     </dependency>
 
