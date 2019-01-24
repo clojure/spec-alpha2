@@ -141,10 +141,22 @@
        (with-gen* [_ gfn] (pred-impl sym gfn))
        (describe* [_] sym)))))
 
+(defn- constant-val?
+  [x]
+  (c/or (nil? x)
+        (boolean? x)
+        (number? x)
+        (string? x)
+        (ident? x)
+        (c/and (coll? x) (empty? x))
+        (c/and (c/or (vector? x) (set? x) (map? x))
+               (every? constant-val? x))))
+
 (defn- set-impl
   ([set-vals]
    (set-impl set-vals nil))
   ([set-vals gfn]
+   (c/assert (every? constant-val? set-vals) "set specs must contain constant values")
    (let [pred #(contains? set-vals %)]
      (reify
        protocols/Spec
