@@ -175,10 +175,11 @@
   [qform]
   (cond
     (keyword? qform) (reg-resolve! qform)
-    (symbol? qform) (pred-impl (res qform)) ;; TODO: symbol must be fully-qualified
+    (qualified-symbol? qform) (pred-impl (res qform))
     (c/or (list? qform) (seq? qform)) (create-spec qform)
     (set? qform) (set-impl qform)
     (nil? qform) nil
+    (simple-symbol? qform) (throw (IllegalStateException. (str "Symbolic spec must be fully-qualified: " qform)))
     :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- specize [x]
