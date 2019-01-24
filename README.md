@@ -27,7 +27,7 @@ Releases and Dependency Information
 
 Development release:
 
-During development, you cna use the git dep to try spec-alpha2:
+During development, you can use the git dep to try spec-alpha2:
 
     clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.10.0"}
                         org.clojure/test.check {:mvn/version "0.9.0"} 
