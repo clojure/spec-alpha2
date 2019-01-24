@@ -163,14 +163,14 @@
   [qform]
   (cond
     (keyword? qform) (reg-resolve! qform)
-    (symbol? qform) (pred-impl (res qform))
+    (symbol? qform) (pred-impl (res qform)) ;; TODO: symbol must be fully-qualified
     (c/or (list? qform) (seq? qform)) (create-spec qform)
     (set? qform) (set-impl qform)
     (nil? qform) nil
     :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- to-spec [x]
-  (if (spec? x) x (spec* x)))
+  (if (keyword? x) (reg-resolve! x) x))
 
 (defn conform
   "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
@@ -331,23 +331,39 @@
           s)
     (symbol (str (.name *ns*)) (str s))))
 
-(defn ^:skip-wiki def-impl
-  "Do not call this directly, use 'def'"
-  [k form]
+(defmacro spec
+  "Given a function symbol, set of constants, or anonymous function,
+  returns a spec object."
+  [s]
+  `(spec* '~(explicate (ns-name *ns*) s)))
+
+(defn register
+  "Given a namespace-qualified keyword or resolvable symbol k, and a
+  spec-name or spec object, makes an entry in the registry mapping k
+  to the spec. Use nil to remove an entry in the registry for k."
+  [k s]
   (c/assert (c/and (ident? k) (namespace k)) "k must be namespaced keyword or resolvable symbol")
-  (let [spec (if (keyword? form) form (spec* form))]
-    (if (nil? spec)
-      (swap! registry-ref dissoc k)
-      (swap! registry-ref assoc k (with-name spec k))))
+  (if (nil? s)
+    (swap! registry-ref dissoc k)
+    (swap! registry-ref assoc k (with-name s k)))
   k)
 
 (defmacro def
   "Given a namespace-qualified keyword or resolvable symbol k, and a
-  spec-name, set, or spec-op makes an entry in the registry mapping k
+  spec-name or symbolic spec, makes an entry in the registry mapping k
   to the spec. Use nil to remove an entry in the registry for k."
   [k spec-form]
-  (let [k (if (symbol? k) (ns-qualify k) k)]
-    `(def-impl '~k '~(explicate (ns-name *ns*) spec-form))))
+  (let [k (if (symbol? k) (ns-qualify k) k)
+        spec-def (cond
+                   (keyword? spec-form) spec-form
+                   (symbol? spec-form) `(s/spec ~spec-form)
+                   (set? spec-form) `(s/spec ~spec-form)
+
+                   (c/or (list? spec-form) (seq? spec-form))
+                   (if (#{'fn 'fn* `c/fn} (first spec-form))
+                     `(s/spec ~spec-form)
+                     spec-form))]
+    `(register '~k ~spec-def)))
 
 (defmacro with-gen
   "Takes a spec and a no-arg, generator-returning fn and returns a version of that spec that uses that generator"

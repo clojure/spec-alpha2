@@ -67,9 +67,9 @@
       ;; can't use equality-based test for Double/NaN
       ;; drange Double/NaN ::s/invalid {[] {:pred '(fn [%] (clojure.core/not (Double/isNaN %))), :val Double/NaN}}
 
-      'keyword? :k :k nil
-      'keyword? nil ::s/invalid [{:pred `keyword? :val nil}]
-      'keyword? "abc" ::s/invalid [{:pred `keyword? :val "abc"}]
+      (s/spec keyword?) :k :k nil
+      (s/spec keyword?) nil ::s/invalid [{:pred `keyword? :val nil}]
+      (s/spec keyword?) "abc" ::s/invalid [{:pred `keyword? :val "abc"}]
 
       a 6 6 nil
       a 3 ::s/invalid '[{:pred (fn [%] (clojure.core/> % 5)), :val 3}]
@@ -154,14 +154,14 @@
       )))
 
 (deftest describing-evaled-specs
-  (let [sp #{1 2}]
-    (is (= (s/describe sp) (s/form sp) sp)))
+  (let [sp (s/spec #{1 2})]
+    (is (= (s/describe sp) (s/form sp) #{1 2})))
 
-  (is (= (s/describe 'odd?) 'odd?))
-  (is (= (s/form 'odd?) 'clojure.core/odd?))
+  (is (= (s/describe (s/spec odd?)) 'odd?))
+  (is (= (s/form (s/spec odd?)) 'clojure.core/odd?))
 
-  (is (= (s/describe '#(odd? %)) '(odd? %)))
-  (is (= (s/form '#(odd? %)) '(fn [%] (odd? %)))))
+  (is (= (s/describe (s/spec #(odd? %))) '(odd? %)))
+  (is (= (s/form (s/spec #(odd? %))) '(fn [%] (clojure.core/odd? %)))))
 
 (defn check-conform-unform [spec vals expected-conforms]
   (let [actual-conforms (map #(s/conform spec %) vals)
