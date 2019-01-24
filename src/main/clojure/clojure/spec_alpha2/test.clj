@@ -322,7 +322,7 @@ with explain-data + ::s/failure."
   [{:keys [s f v spec]} opts]
   (let [re-inst? (and v (seq (unstrument s)) true)
         f (or f (when v @v))
-        specd (#'s/to-spec spec)]
+        specd (#'s/specize spec)]
     (try
      (cond
       (or (nil? f) (some-> v meta :macro))

@@ -169,14 +169,14 @@
     (nil? qform) nil
     :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
 
-(defn- to-spec [x]
+(defn- specize [x]
   (if (keyword? x) (reg-resolve! x) x))
 
 (defn conform
   "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
 	if value does not match spec, else the (possibly destructured) value."
   [spec x]
-  (let [s (to-spec spec)]
+  (let [s (specize spec)]
     (conform* s x)))
 
 (defn unform
@@ -184,13 +184,13 @@
   'conform' with the same spec, returns a value with all conform
   destructuring undone."
   [spec x]
-  (unform* (to-spec spec) x))
+  (unform* (specize spec) x))
 
 (defn form
   "returns the spec as data"
   [spec]
   ;;TODO - incorporate gens
-  (describe* (to-spec spec)))
+  (describe* (specize spec)))
 
 (defn- abbrev [form]
   (cond
@@ -217,7 +217,7 @@
   (abbrev (form spec)))
 
 (defn explain-data* [spec path via in x]
-  (let [probs (explain* (to-spec spec) path via in x)]
+  (let [probs (explain* (specize spec) path via in x)]
     (when-not (empty? probs)
       {::sa/problems probs
        ::sa/spec spec
@@ -278,13 +278,13 @@
 (defn valid?
   "Helper function that returns true when x is valid for spec."
   [spec x]
-  (let [spec (to-spec spec)]
+  (let [spec (specize spec)]
     (not (invalid? (conform* spec x)))))
 
 (defn- gensub
   [spec overrides path rmap form]
   ;;(prn {:spec spec :over overrides :path path :form form})
-  (let [spec (to-spec spec)]
+  (let [spec (specize spec)]
     (if-let [g (c/or (when-let [gfn (c/or (get overrides (c/or (spec-name spec) spec))
                                           (get overrides path))]
                        (gfn))
