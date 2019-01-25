@@ -16,11 +16,8 @@ Namespaces to load:
              '[clojure.spec-alpha2.gen :as gen]
              '[clojure.spec-alpha2.test :as test])
 
-Differences from spec.alpha:
+Also see: [Differences from spec.alpha](https://github.com/clojure/spec-alpha2/wiki/Differences-from-spec.alpha)
 
-* Spec API functions (`conform`, `explain`, etc) now accept only values that eval to spec objects or keywords (this excludes symbols, sets, and anonymous functions). Use the `s/spec` op around those to turn them into specs.
-* Rather than `s/spec`, use `s/nest` if you need to introduce a nested collection spec within a regex op.
-* Because Clojure itself does not know about spec-alpha2, certain integration features will not work as expected (`doc` won't see the registry, error stack reporting may not print the correct failure location during instrumentation, and macros will not be automatically checked).
 
 Releases and Dependency Information
 ========================================
