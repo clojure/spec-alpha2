@@ -297,6 +297,40 @@
     :a 'clojure.core/vector?
     [] '(clojure.core/= (clojure.core/count %) 1)))
 
+
+;; multi-spec
+
+(s/def :event/type keyword?)
+(s/def :event/timestamp int?)
+(s/def :search/url string?)
+(s/def :error/message string?)
+(s/def :error/code int?)
+
+(defmulti event-type :event/type)
+(defmethod event-type :event/search [_]
+  (s/keys :req [:event/type :event/timestamp :search/url]))
+(defmethod event-type :event/error [_]
+  (s/keys :req [:event/type :event/timestamp :error/message :error/code]))
+
+(s/def :event/event (s/multi-spec event-type :event/type))
+
+(deftest test-multi-spec
+  (is (true? (s/valid? :event/event
+                       {:event/type :event/search
+                        :event/timestamp 1463970123000
+                        :search/url "https://clojure.org"})))
+  (is (true? (s/valid? :event/event
+                       {:event/type :event/error
+                        :event/timestamp 1463970123000
+                        :error/message "Invalid host"
+                        :error/code 500})))
+  (is (= 1 (count (::sa/problems (s/explain-data
+                                   :event/event
+                                   {:event/type :event/restart})))))
+  (is (= 2 (count (::sa/problems (s/explain-data
+                                   :event/event
+                                   {:event/type :event/search :search/url 200}))))))
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)

@@ -641,7 +641,7 @@
   though those values are not evident in the spec.
 "
   [mm retag]
-  `(spec* '~(explicate (ns-name *ns*) (list `multi-spec '~mm ~retag))))
+  `(spec* '~(explicate (ns-name *ns*) `(multi-spec ~mm ~retag))))
 
 (defmacro tuple
   "takes one or more preds and returns a spec for a tuple, a vector
