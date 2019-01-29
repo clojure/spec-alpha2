@@ -331,6 +331,20 @@
                                    :event/event
                                    {:event/type :event/search :search/url 200}))))))
 
+;; forward declaration should work
+(s/def :fwd/a (s/* (s/alt :k :fwd/k :i :fwd/i)))
+
+(s/def :fwd/k keyword?)
+(s/def :fwd/i int?)
+
+(deftest test-fwd
+  (is (true? (s/valid? :fwd/a [:a 10 100 :b])))
+  (is (= [[:k :a] [:i 10] [:i 100] [:k :b]]
+         (s/conform :fwd/a [:a 10 100 :b]))))
+
+
+
+
 (comment
   (require '[clojure.test :refer (run-tests)])
   (in-ns 'clojure.test-clojure.spec)
