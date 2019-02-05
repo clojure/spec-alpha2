@@ -169,6 +169,8 @@
        (with-gen* [_ gfn] (set-impl set-vals gfn))
        (describe* [_] set-vals)))))
 
+(declare gensub)
+
 (defn- lookup-impl
   [kw gfn]
   (let [spec (delay (reg-resolve! kw))]
@@ -178,7 +180,10 @@
       (unform* [_ x] (unform* @spec x))
       (explain* [_ path via in x] (explain* @spec path via in x))
       (gen* [_ overrides path rmap]
-        (if gfn (gfn) (gen* @spec overrides (conj path kw) rmap)))
+        (cond
+          gfn (gfn)
+          (contains? overrides kw) ((get overrides kw))
+          :else (gensub @spec overrides (conj path kw) rmap kw)))
       (with-gen* [_ gfn] (lookup-impl kw gfn))
       (describe* [_] kw))))
 
@@ -196,7 +201,7 @@
     :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- specize [x]
-  (if (keyword? x) (reg-resolve! x) x))
+  (if (keyword? x) (lookup-impl x nil) x))
 
 (defn conform
   "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
