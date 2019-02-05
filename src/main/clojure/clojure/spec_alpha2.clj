@@ -123,7 +123,7 @@
     form))
 
 (defmulti create-spec
-          (fn [qform] (first qform)))
+  (fn [qform] (first qform)))
 
 (defn- pred-impl
   ([sym]
