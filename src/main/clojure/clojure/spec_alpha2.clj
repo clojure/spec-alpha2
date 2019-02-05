@@ -337,7 +337,9 @@
   (walk/postwalk
     #(cond
        (keyword? %) %
-       (symbol? %) (c/or (some->> % (ns-resolve a-ns) symbol) %)
+       (symbol? %) (if-let [rs (some->> % (ns-resolve a-ns))]
+                     (if (var? rs) (symbol rs) %)
+                     %)
        :else %)
     form))
 
