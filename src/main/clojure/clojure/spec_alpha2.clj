@@ -201,14 +201,13 @@
     :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- specize [x]
-  (if (keyword? x) (lookup-impl x nil) x))
+  (if (keyword? x) (reg-resolve! x) x))
 
 (defn conform
   "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
 	if value does not match spec, else the (possibly destructured) value."
   [spec x]
-  (let [s (specize spec)]
-    (conform* s x)))
+  (conform* (specize spec) x))
 
 (defn unform
   "Given a spec and a value created by or compliant with a call to
