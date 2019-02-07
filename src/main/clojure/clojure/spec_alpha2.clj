@@ -840,5 +840,57 @@ set. You can toggle check-asserts? with (check-asserts bool)."
        ~x)
     x))
 
+(defn ^:skip-wiki sig-map
+  "Do not call directly."
+  [sig vals]
+  (let [locals (->> sig
+                    (tree-seq coll? identity)
+                    (filter #(c/and (symbol? %) (not= '& %)))
+                    distinct
+                    vec)]
+    (zipmap locals (eval `(let [~sig ~(vec vals)] ~locals)))))
+
+(defn ^:skip-wiki op-spec
+  "Do not call directly, use `defop`"
+  [sp form gfn]
+  (reify
+    protocols/Spec
+    (conform* [_ x] (if (valid? @sp x) x ::invalid))
+    (unform* [_ x] x)
+    (explain* [_ path via in x] (protocols/explain* @sp path via in x))
+    (gen* [_ _ _ _] (if gfn (gfn) (gen @sp)))
+    (with-gen* [_ gfn] (op-spec sp form gfn))
+    (describe* [_] form)))
+
+(defmacro defop
+  "Defines a new spec op with op-name defined by the form. Defines a macro for op-name with docstring that
+  expands to a call to spec* with the explicated form. args are replaced in the form. Creates a create-spec
+  method implementation for op-name that creates a spec whose body is form.
+
+  Opts allowed:
+   :gen - takes a no-arg function returning a generator to use"
+  {:arglists '([op-name doc-string? opts? form])}
+  [op-name & op-tail]
+  (let [form (last op-tail)
+        opts (butlast op-tail)
+        [doc args opts] (if (string? (first opts))
+                          [(first opts) (second opts) (nthrest opts 2)]
+                          [nil (first opts) (rest opts)])
+        _ (c/assert (even? (count opts)) "defop options should be keyword/value pairs")
+        {:keys [gen]} opts
+        ns-name (ns-name *ns*)
+        op (symbol (name ns-name) (name op-name))]
+    `(do
+       (defmethod create-spec '~op
+         [[~'_ ~'& ~'sargs]]
+         (let [m# (sig-map '~args ~'sargs) ;; map of arg name to arg value
+               sp# (delay (spec* (explicate '~ns-name (walk/postwalk (fn [x#] (get m# x# x#)) '~form))))]
+           (op-spec sp# (cons '~op ~'sargs) (eval (walk/postwalk (fn [x#] (get m# x# x#)) '~gen)))))
+       (defmacro ~op-name
+         ~@(if doc [doc] [])       ;; docstring
+         {:arglists (list '~args)} ;; metadata with arglists
+         [~'& ~'sargs]
+         (list `spec* (list `explicate (list `quote '~ns-name) (list `quote (cons '~op ~'sargs))))))))
+
 ;; Load the spec op implementations
 (load "/clojure/spec_alpha2/impl")
