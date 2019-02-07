@@ -57,11 +57,11 @@
 
 (defmethod s/create-spec `fn
   [[_ & fn-tail]]
-  (fn-impl `(fn* ~@fn-tail) nil))
+  (fn-impl `(fn ~@fn-tail) nil))
 
 (defmethod s/create-spec 'fn
   [[_ & fn-tail]]
-  (fn-impl `(fn* ~@fn-tail) nil))
+  (fn-impl `(fn ~@fn-tail) nil))
 
 (defmethod s/create-spec `s/with-gen
   [[_ spec gen-fn]]
