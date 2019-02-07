@@ -29,7 +29,7 @@ During development, you can use the git dep to try spec-alpha2:
     clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.10.0"}
                         org.clojure/test.check {:mvn/version "0.9.0"} 
                         org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git" 
-                                                 :sha "6337bf9f6a4408e41be5b65502f8d7da8fc29c9c"}}}'
+                                                 :sha "b7719f8a9d567796a373feaabf36c75ba51033ce"}}}'
 
 
 Latest stable release: TBD
