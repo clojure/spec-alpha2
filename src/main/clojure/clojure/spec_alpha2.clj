@@ -754,11 +754,11 @@
          (let [t (inst-ms inst)]
            (c/and (<= (inst-ms start) t) (< t (inst-ms end))))))
 
-(defmacro inst-in
-  "Returns a spec that validates insts in the range from start
-(inclusive) to end (exclusive)."
-  [start end]
-  `(spec* '~(explicate (ns-name *ns*) `(inst-in ~start ~end))))
+;(defmacro inst-in
+;  "Returns a spec that validates insts in the range from start
+;(inclusive) to end (exclusive)."
+;  [start end]
+;  `(spec* '~(explicate (ns-name *ns*) `(inst-in ~start ~end))))
 
 (defn int-in-range?
   "Return true if start <= val, val < end and val is a fixed
@@ -766,21 +766,21 @@
   [start end val]
   (c/and (int? val) (<= start val) (< val end)))
 
-(defmacro int-in
-  "Returns a spec that validates fixed precision integers in the
-  range from start (inclusive) to end (exclusive)."
-  [start end]
-  `(spec* '~(explicate (ns-name *ns*) `(int-in ~start ~end))))
+;(defmacro int-in
+;  "Returns a spec that validates fixed precision integers in the
+;  range from start (inclusive) to end (exclusive)."
+;  [start end]
+;  `(spec* '~(explicate (ns-name *ns*) `(int-in ~start ~end))))
 
-(defmacro double-in
-  "Specs a 64-bit floating point number. Options:
-
-    :infinite? - whether +/- infinity allowed (default true)
-    :NaN?      - whether NaN allowed (default true)
-    :min       - minimum value (inclusive, default none)
-    :max       - maximum value (inclusive, default none)"
-  [& opts]
-  `(spec* '~(explicate (ns-name *ns*) `(double-in ~@opts))))
+;(defmacro double-in
+;  "Specs a 64-bit floating point number. Options:
+;
+;    :infinite? - whether +/- infinity allowed (default true)
+;    :NaN?      - whether NaN allowed (default true)
+;    :min       - minimum value (inclusive, default none)
+;    :max       - maximum value (inclusive, default none)"
+;  [& opts]
+;  `(spec* '~(explicate (ns-name *ns*) `(double-in ~@opts))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; assert ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defonce
@@ -894,3 +894,35 @@ set. You can toggle check-asserts? with (check-asserts bool)."
 
 ;; Load the spec op implementations
 (load "/clojure/spec_alpha2/impl")
+
+;; Derived ops
+
+(defop inst-in
+  "Returns a spec that validates insts in the range from start
+  (inclusive) to end (exclusive)."
+  [start end]
+  :gen #(clojure.spec-alpha2.gen/fmap (fn [^long d] (java.util.Date. d))
+         (clojure.spec-alpha2.gen/large-integer* {:min (inst-ms start) :max (inst-ms end)}))
+  (and inst? #(inst-in-range? start end %)))
+
+(defop int-in
+  "Returns a spec that validates fixed precision integers in the
+  range from start (inclusive) to end (exclusive)."
+  [start end]
+  :gen #(clojure.spec-alpha2.gen/large-integer* {:min start :max (dec end)})
+  (and int? #(int-in-range? start end %)))
+
+(defop double-in
+  "Specs a 64-bit floating point number. Options:
+
+    :infinite? - whether +/- infinity allowed (default true)
+    :NaN?      - whether NaN allowed (default true)
+    :min       - minimum value (inclusive, default none)
+    :max       - maximum value (inclusive, default none)"
+  [& {:keys [infinite? NaN? min max :as m]}]
+  :gen #(clojure.spec-alpha2.gen/double* m)
+  (and double?
+       #(if-not infinite? (not (Double/isInfinite %)))
+       #(if-not NaN? (not (Double/isNaN %)))
+       #(if min (<= min %) true)
+       #(if max (<= % max) true)))

@@ -60,10 +60,10 @@
       irange #inst "1942" #inst "1942" nil
       irange #inst "1946" ::s/invalid [{:pred '(fn [%] (clojure.spec-alpha2/inst-in-range? #inst "1939-01-01T00:00:00.000-00:00" #inst "1946-01-01T00:00:00.000-00:00" %)), :val #inst "1946"}]
 
-      drange 3.0 ::s/invalid [{:pred '(fn [%] (clojure.core/<= 3.1 %)), :val 3.0}]
+      drange 3.0 ::s/invalid [{:pred '(fn [%] (if 3.1 (clojure.core/<= 3.1 %) true)), :val 3.0}]
       drange 3.1 3.1 nil
       drange 3.2 3.2 nil
-      drange Double/POSITIVE_INFINITY ::s/invalid [{:pred '(fn [%] (clojure.core/not (Double/isInfinite %))), :val Double/POSITIVE_INFINITY}]
+      drange Double/POSITIVE_INFINITY ::s/invalid [{:pred '(fn [%] (clojure.core/if-not false (clojure.core/not (Double/isInfinite %)))), :val Double/POSITIVE_INFINITY}]
       ;; can't use equality-based test for Double/NaN
       ;; drange Double/NaN ::s/invalid {[] {:pred '(fn [%] (clojure.core/not (Double/isNaN %))), :val Double/NaN}}
 
