@@ -1152,11 +1152,12 @@
 
 (defmethod s/create-spec `s/keys*
   [[_ & kspecs]]
-  (s/with-gen
-    (s/spec* `(s/& (s/* (s/cat ::k keyword? ::v any?))
-                   ::s/kvs->map
-                   (s/keys ~@kspecs)))
-    #(gen/fmap (fn [m] (apply concat m)) (s/gen `(s/keys ~@kspecs)))))
+  (s/spec*
+    `(s/with-gen
+       (s/& (s/* (s/cat ::k keyword? ::v any?))
+            ::s/kvs->map
+            (s/keys ~@kspecs))
+       #(gen/fmap (fn [m#] (apply concat m#)) (s/gen (s/keys ~@kspecs))))))
 
 ;;;;;;;;;;;;;;;;; HOFs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
