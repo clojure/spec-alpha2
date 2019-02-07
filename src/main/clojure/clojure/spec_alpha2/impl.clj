@@ -1148,17 +1148,6 @@
                   :via via
                   :in (conj in i)}]))))))
 
-(s/def ::s/kvs->map (s/conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
-
-(defmethod s/create-spec `s/keys*
-  [[_ & kspecs]]
-  (s/spec*
-    `(s/with-gen
-       (s/& (s/* (s/cat ::k keyword? ::v any?))
-            ::s/kvs->map
-            (s/keys ~@kspecs))
-       #(gen/fmap (fn [m#] (apply concat m#)) (s/gen (s/keys ~@kspecs))))))
-
 ;;;;;;;;;;;;;;;;; HOFs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- call-valid?
