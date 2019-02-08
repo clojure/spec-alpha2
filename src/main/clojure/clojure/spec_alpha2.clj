@@ -928,7 +928,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
   user=> (s/conform (s/cat :i1 integer? :m (s/keys* :req-un [::a ::c]) :i2 integer?) [42 :a 1 :c 2 :d 4 99])
   {:i1 42, :m {:a 1, :c 2, :d 4}, :i2 99}"
   [& kspecs]
-  :gen #(gen/fmap (fn [m#] (apply concat m#)) (gen (keys ~@kspecs)))
+  :gen #(clojure.spec-alpha2.gen/fmap (fn [m#] (apply concat m#)) (gen (keys ~@kspecs)))
   (& (* (cat ::k keyword? ::v any?))
      ::kvs->map
      (keys kspecs)))
