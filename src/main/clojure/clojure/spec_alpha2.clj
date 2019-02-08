@@ -838,8 +838,8 @@ set. You can toggle check-asserts? with (check-asserts bool)."
   [sp form gfn]
   (reify
     protocols/Spec
-    (conform* [_ x] (if (valid? @sp x) x ::invalid))
-    (unform* [_ x] x)
+    (conform* [_ x] (conform @sp x))
+    (unform* [_ x] (unform @sp x))
     (explain* [_ path via in x] (protocols/explain* @sp path via in x))
     (gen* [_ _ _ _] (if gfn (gfn) (gen @sp)))
     (with-gen* [_ gfn] (op-spec sp form gfn))
