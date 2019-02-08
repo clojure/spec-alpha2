@@ -696,6 +696,23 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; non-primitives ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro keys*
+  "takes the same arguments as spec/keys and returns a regex op that matches sequences of key/values,
+  converts them into a map, and conforms that map with a corresponding
+  spec/keys call:
+
+  user=> (s/conform (s/keys :req-un [::a ::c]) {:a 1 :c 2})
+  {:a 1, :c 2}
+  user=> (s/conform (s/keys* :req-un [::a ::c]) [:a 1 :c 2])
+  {:a 1, :c 2}
+
+  the resulting regex op can be composed into a larger regex:
+
+  user=> (s/conform (s/cat :i1 integer? :m (s/keys* :req-un [::a ::c]) :i2 integer?) [42 :a 1 :c 2 :d 4 99])
+  {:i1 42, :m {:a 1, :c 2, :d 4}, :i2 99}"
+  [& kspecs]
+  `(spec* '~(explicate (ns-name *ns*) `(keys* ~@kspecs))))
+
 (defmacro nonconforming
   "takes a spec and returns a spec that has the same properties except
   'conform' returns the original (not the conformed) value."
@@ -909,26 +926,3 @@ set. You can toggle check-asserts? with (check-asserts bool)."
        #(if-not NaN? (not (Double/isNaN %)))
        #(if min (<= min %) true)
        #(if max (<= % max) true)))
-
-(clojure.spec-alpha2/def ::kvs->map
-  (conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
-
-(defop keys*
-  "takes the same arguments as spec/keys and returns a regex op that matches sequences of key/values,
-  converts them into a map, and conforms that map with a corresponding
-  spec/keys call:
-
-  user=> (s/conform (s/keys :req-un [::a ::c]) {:a 1 :c 2})
-  {:a 1, :c 2}
-  user=> (s/conform (s/keys* :req-un [::a ::c]) [:a 1 :c 2])
-  {:a 1, :c 2}
-
-  the resulting regex op can be composed into a larger regex:
-
-  user=> (s/conform (s/cat :i1 integer? :m (s/keys* :req-un [::a ::c]) :i2 integer?) [42 :a 1 :c 2 :d 4 99])
-  {:i1 42, :m {:a 1, :c 2, :d 4}, :i2 99}"
-  [& kspecs]
-  :gen #(clojure.spec-alpha2.gen/fmap (fn [m#] (apply concat m#)) (gen (keys ~@kspecs)))
-  (& (* (cat ::k keyword? ::v any?))
-     ::kvs->map
-     (keys kspecs)))
