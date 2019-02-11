@@ -171,28 +171,12 @@
 
 (declare gensub)
 
-(defn- lookup-impl
-  [kw gfn]
-  (let [spec (delay (reg-resolve! kw))]
-    (reify
-      protocols/Spec
-      (conform* [_ x] (conform* @spec x))
-      (unform* [_ x] (unform* @spec x))
-      (explain* [_ path via in x] (explain* @spec path via in x))
-      (gen* [_ overrides path rmap]
-        (cond
-          gfn (gfn)
-          (contains? overrides kw) ((get overrides kw))
-          :else (gensub @spec overrides (conj path kw) rmap kw)))
-      (with-gen* [_ gfn] (lookup-impl kw gfn))
-      (describe* [_] kw))))
-
 (defn spec*
   "Returns a spec object given a fully-qualified spec op form, symbol, set,
   or registry identifier. If needed, use 'explicate' to qualify forms."
   [qform]
   (cond
-    (keyword? qform) (lookup-impl qform nil)
+    (keyword? qform) (reg-resolve! qform)
     (qualified-symbol? qform) (pred-impl (res qform))
     (c/or (list? qform) (seq? qform)) (create-spec qform)
     (set? qform) (set-impl qform)
