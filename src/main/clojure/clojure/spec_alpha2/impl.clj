@@ -515,7 +515,7 @@
                 gs (remove nil? (map gen keys @specs forms))]
             (when-not (empty? gs)
               (gen/one-of gs)))))
-      (with-gen* [_ gfn] (or-spec-impl forms gfn))
+      (with-gen* [_ gfn] (or-spec-impl key-forms gfn))
       (describe* [_] `(s/or ~@(mapcat vector keys forms))))))
 
 (defmethod s/create-spec `s/or
