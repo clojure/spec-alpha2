@@ -714,7 +714,7 @@
                (cond
                  gen-into (gen/return gen-into)
                  kind (gen/fmap #(if (empty? %) % (empty %))
-                                (#'s/gensub kind overrides path rmap form))
+                                (#'s/gensub (s/spec* kind-form) overrides path rmap form))
                  :else (gen/return []))
                (fn [init]
                  (gen/fmap
