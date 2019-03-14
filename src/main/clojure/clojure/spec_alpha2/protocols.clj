@@ -16,3 +16,7 @@
   (gen* [spec overrides path rmap])
   (with-gen* [spec gfn])
   (describe* [spec]))
+
+(defprotocol KeySet
+  (keyset* [spec] "Returns coll of known keys")
+  (unq* [spec] "Returns map of unqualified keys to symbolic specs"))

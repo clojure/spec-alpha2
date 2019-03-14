@@ -11,11 +11,27 @@
   (:require
     [clojure.spec-alpha2 :as s]
     [clojure.spec-alpha2.protocols :as protocols
-     :refer [Spec conform* unform* explain* gen* with-gen* describe*]]
+     :refer [Spec conform* unform* explain* gen* with-gen* describe*
+             KeySet keyset* unq*]]
     [clojure.spec-alpha2.gen :as gen]
+    [clojure.set :as set]
     [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)
+
+(defn- keyset
+  "Returns the keyset from a map spec object"
+  [spec]
+  (if (vector? spec)
+    (filter keyword? spec)
+    (keyset* spec)))
+
+(defn- unq
+  "Returns map of unqualified key to symbolic spec"
+  [spec]
+  (if (vector? spec)
+    (apply merge (filter map? spec))
+    (unq* spec)))
 
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
@@ -282,7 +298,10 @@
                                    req (conj :req req)
                                    opt (conj :opt opt)
                                    req-un (conj :req-un req-un)
-                                   opt-un (conj :opt-un opt-un)))))))
+                                   opt-un (conj :opt-un opt-un))))
+      protocols/KeySet
+      (keyset* [_] (vec (concat req-keys opt-keys)))
+      (unq* [_] nil))))
 
 (defmethod s/create-spec `s/keys
   [[_ & {:keys [req req-un opt opt-un gen]}]]
@@ -317,6 +336,114 @@
                     :pred-exprs (mapv eval pred-exprs)
                     :keys-pred (eval keys-pred)
                     :gfn (eval gen)})))
+
+;; keyset - qualified keys (specs in registry), or map of unqualified keys to specs
+;; selection - required keys, or map of
+;; optional keys to nested selections
+
+;; spec = (s/select [:r/a :r/b {:c 'int?}] [:r/a :r/b {:r/b [:r/d}])
+;; val  = {:r/a 1, :r/b {:r/d 10}, :c 20}
+
+(defn- select-impl
+  [kset selection gfn]
+  (let [id (java.util.UUID/randomUUID)
+        req-kset (->> selection (filter keyword?) set)
+        kset-spec (if (vector? kset) kset (s/spec* kset))
+        unq-specs (unq kset-spec)
+        unq-specs (zipmap (keys unq-specs) (map #(s/spec* (s/explicate (ns-name *ns*) %)) (vals unq-specs)))
+        sub-selects (->> selection (filter map?) (apply merge))
+        sub-specs (zipmap (keys sub-selects)
+                          (map (fn [[k s]] (s/spec* `(s/select ~(keyset (s/get-spec k)) ~s)))
+                               sub-selects))
+        opt-kset (set/difference (set/union (-> kset-spec keyset set)
+                                            (-> unq-specs keys set)
+                                            (-> sub-specs keys set))
+                                 req-kset)
+        lookup #(or (s/get-spec %) (get unq-specs %))]
+    (reify
+      Spec
+      (conform* [_ x]
+        (if (or (not (map? x))
+                (not (set/subset? req-kset (-> x keys set))))
+          ::s/invalid
+          (loop [ret x ;; either conformed map or ::s/invalid
+                 [[k v] & ks :as m] x]
+            (if k
+              (let [conformed (if-let [sp (lookup k)]
+                                (s/conform sp v)
+                                v)]
+                (if (s/invalid? conformed)
+                  (recur ::s/invalid nil)
+                  (if-let [sub-spec (get sub-specs k)]
+                    (when (not (s/valid? sub-spec (get x k)))
+                      (recur ::s/invalid nil))
+                    (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks))))
+              ret))))
+      (unform* [_ x]
+        (loop [ret x, [[k v] & ks :as m] x]
+          (if-not m
+            ret
+            (if-let [sp (lookup k)]
+              (let [uv (s/unform sp v)]
+                (recur (if (identical? uv v) ret (assoc ret k uv)) ks))
+              (recur ret ks)))))
+      (explain* [_ path via in x]
+        (if (not (map? x))
+          [{:path path :pred `map? :val x :via via :in in}]
+          (vec (concat
+                 ;; required key missing
+                 (keep (fn [k]
+                         (when-not (contains? x k)
+                           {:path path :pred `(fn [~'m] (contains? ~'m ~k)) :val x :via via :in in}))
+                       req-kset)
+                 ;; registered key has conforming v
+                 (mapcat identity
+                   (keep
+                     (fn [[k v]]
+                       (when-let [sp (lookup k)]
+                         (explain-1 (s/form sp) sp (conj path k) via (conj in k) v)))
+                     x))
+                 ;; nested select matches
+                 (mapcat identity
+                    (keep
+                      (fn [[k v]]
+                        (when (contains? x k)
+                          (explain-1 (s/form v) v (conj path k) via (conj in k) (get x k))))
+                      sub-specs))))))
+      (gen* [_ overrides path rmap]
+        (if gfn
+          (gfn)
+          (let [rmap (inck rmap id)
+                rgen (fn [k s] [k (#'s/gensub s overrides (conj path k) rmap k)])
+                ogen (fn [k s]
+                       (when-not (recur-limit? rmap id path k)
+                         [k (gen/delay (#'s/gensub s overrides (conj path k) rmap k))]))
+                req-specs (map #(or (sub-specs %) (lookup %)) req-kset)
+                reqs (map rgen req-kset req-specs)
+                opt-specs (map #(or (sub-specs %) (lookup %)) opt-kset)
+                opts (remove nil? (map ogen opt-kset opt-specs))]
+            (when (every? identity (concat (map second reqs) (map second opts)))
+              (gen/bind
+                (gen/tuple (and-k-gen req-kset) (or-k-gen opt-kset))
+                (fn [[req-ks opt-ks]]
+                  (let [qks (flatten (concat req-ks opt-ks))]
+                    (->> (into reqs opts)
+                         (filter #((set qks) (first %)))
+                         (apply concat)
+                         (apply gen/hash-map)))))))))
+      (with-gen* [_ gfn] (select-impl kset selection gfn))
+      (describe* [_] `(s/select ~kset ~selection)))))
+
+(defmethod s/create-spec `s/select
+  ;; keyset is a vector of potential keys and their specs:
+  ;; - qualified key
+  ;; - map of unqualified key to soec
+  ;; selection is vector that contain any of:
+  ;; - required key
+  ;; - map of optional key to nested keyset
+  ;;   - if key exists, keyset must be satisfied on nested value
+  [[_ keyset selection]]
+  (select-impl keyset selection nil))
 
 (defn- nest-impl
   [re-form gfn]

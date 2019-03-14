@@ -38,7 +38,7 @@
 (defonce ^:private registry-ref (atom {}))
 
 (defn registry
-  "returns the registry map, prefer 'get-spec' to lookup a spec by name"
+  "Returns the registry map, prefer 'get-spec' to lookup a spec by name"
   []
   @registry-ref)
 
@@ -616,6 +616,15 @@
   returns a test.check generator."
   [& ks]
   `(spec* '~(explicate (ns-name *ns*) `(keys ~@ks))))
+
+(defmacro select
+  "Takes a keyset and a selection pattern and returns a spec that
+  validates a map. The keyset specifies what keys may be in the map
+  and the specs to use if the keys are unqualified. The selection
+  pattern indicates what keys must be in the map, and any nested
+  maps."
+  [keyset selection]
+  `(spec* '~(explicate (ns-name *ns*) `(select ~keyset ~selection))))
 
 (defmacro multi-spec
   "Takes the name of a spec/predicate-returning multimethod and a
