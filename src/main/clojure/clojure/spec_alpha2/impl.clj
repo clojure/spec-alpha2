@@ -368,8 +368,9 @@
                 (if (s/invalid? conformed)
                   (recur ::s/invalid nil)
                   (if-let [sub-spec (get sub-specs k)]
-                    (when (not (s/valid? sub-spec (get x k)))
-                      (recur ::s/invalid nil))
+                    (if (not (s/valid? sub-spec (get x k)))
+                      (recur ::s/invalid nil)
+                      (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks))
                     (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks))))
               ret))))
       (unform* [_ x]

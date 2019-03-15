@@ -167,6 +167,7 @@
       select1 {::k1 1 ::k2 5} ::s/invalid [{:pred 'clojure.core/keyword? :val 5}]
 
       select2 {::k1 1} {::k1 1} nil
+      select2 {::k1 1 ::m {::mk1 10}} {::k1 1 ::m {::mk1 10}} nil
       )))
 
 (deftest describing-evaled-specs
