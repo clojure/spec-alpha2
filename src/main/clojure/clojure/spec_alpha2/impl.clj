@@ -337,13 +337,6 @@
                     :keys-pred (eval keys-pred)
                     :gfn (eval gen)})))
 
-;; keyset - qualified keys (specs in registry), or map of unqualified keys to specs
-;; selection - required keys, or map of
-;; optional keys to nested selections
-
-;; spec = (s/select [:r/a :r/b {:c 'int?}] [:r/a :r/b {:r/b [:r/d}])
-;; val  = {:r/a 1, :r/b {:r/d 10}, :c 20}
-
 (defn- select-impl
   [kset selection gfn]
   (let [id (java.util.UUID/randomUUID)
@@ -435,13 +428,6 @@
       (describe* [_] `(s/select ~kset ~selection)))))
 
 (defmethod s/create-spec `s/select
-  ;; keyset is a vector of potential keys and their specs:
-  ;; - qualified key
-  ;; - map of unqualified key to soec
-  ;; selection is vector that contain any of:
-  ;; - required key
-  ;; - map of optional key to nested keyset
-  ;;   - if key exists, keyset must be satisfied on nested value
   [[_ keyset selection]]
   (select-impl keyset selection nil))
 

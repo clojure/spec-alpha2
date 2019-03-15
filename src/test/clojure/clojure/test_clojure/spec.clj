@@ -24,6 +24,13 @@
       m1)
     (= m1 m2)))
 
+(s/def ::k1 int?)
+(s/def ::k2 keyword?)
+(s/def ::mk1 int?)
+(s/def ::mk2 keyword?)
+(s/def ::mk3 string?)
+(s/def ::m (s/keys :req [::mk1] :opt [::mk2 ::mk3]))
+
 (deftest conform-explain
   (let [a (s/and #(> % 5) #(< % 10))
         o (s/or :s string? :k keyword?)
@@ -43,6 +50,8 @@
         lrange (s/int-in 7 42)
         drange (s/double-in :infinite? false :NaN? false :min 3.1 :max 3.2)
         irange (s/inst-in #inst "1939" #inst "1946")
+        select1 (s/select [] [::k1 ::k2])
+        select2 (s/select [] [::k1 {::m [::mk1]}])
         ]
     (are [spec x conformed ed]
       (let [co (result-or-ex (s/conform spec x))
@@ -151,6 +160,13 @@
       coll [:a :b] [:a :b] nil
       coll (map identity [:a :b]) '(:a :b) nil
       ;;coll [:a "b"] ::s/invalid '[{:pred (coll-checker keyword?), :val [:a b]}]
+
+      select1 {::k1 1 ::k2 :a} {::k1 1 ::k2 :a} nil
+      select1 "oops" ::s/invalid [{:pred 'clojure.core/map? :val "oops"}]
+      select1 {::k1 1} ::s/invalid [{:pred '(clojure.core/fn [m] (clojure.core/contains? m ::k2)) :val {::k1 1}}]
+      select1 {::k1 1 ::k2 5} ::s/invalid [{:pred 'clojure.core/keyword? :val 5}]
+
+      select2 {::k1 1} {::k1 1} nil
       )))
 
 (deftest describing-evaled-specs
@@ -341,7 +357,6 @@
 ;  (is (true? (s/valid? :fwd/a [:a 10 100 :b])))
 ;  (is (= [[:k :a] [:i 10] [:i 100] [:k :b]]
 ;         (s/conform :fwd/a [:a 10 100 :b]))))
-
 
 
 
