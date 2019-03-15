@@ -168,6 +168,9 @@
 
       select2 {::k1 1} {::k1 1} nil
       select2 {::k1 1 ::m {::mk1 10}} {::k1 1 ::m {::mk1 10}} nil
+      ;; problems here from both the registered key in the outer map and from missing selection
+      select2 {::k1 1 ::m {}} ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.core/contains? % ::mk1)) :val {}}
+                                           {:pred '(clojure.core/fn [m] (clojure.core/contains? m ::mk1)) :val {}}]
       )))
 
 (deftest describing-evaled-specs
