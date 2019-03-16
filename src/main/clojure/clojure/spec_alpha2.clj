@@ -148,6 +148,7 @@
         (number? x)
         (string? x)
         (ident? x)
+        (char? x)
         (c/and (coll? x) (empty? x))
         (c/and (c/or (vector? x) (set? x) (map? x))
                (every? constant-val? x))))
