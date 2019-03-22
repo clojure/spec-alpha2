@@ -748,33 +748,11 @@
          (let [t (inst-ms inst)]
            (c/and (<= (inst-ms start) t) (< t (inst-ms end))))))
 
-;(defmacro inst-in
-;  "Returns a spec that validates insts in the range from start
-;(inclusive) to end (exclusive)."
-;  [start end]
-;  `(spec* '~(explicate (ns-name *ns*) `(inst-in ~start ~end))))
-
 (defn int-in-range?
   "Return true if start <= val, val < end and val is a fixed
   precision integer."
   [start end val]
   (c/and (int? val) (<= start val) (< val end)))
-
-;(defmacro int-in
-;  "Returns a spec that validates fixed precision integers in the
-;  range from start (inclusive) to end (exclusive)."
-;  [start end]
-;  `(spec* '~(explicate (ns-name *ns*) `(int-in ~start ~end))))
-
-;(defmacro double-in
-;  "Specs a 64-bit floating point number. Options:
-;
-;    :infinite? - whether +/- infinity allowed (default true)
-;    :NaN?      - whether NaN allowed (default true)
-;    :min       - minimum value (inclusive, default none)
-;    :max       - maximum value (inclusive, default none)"
-;  [& opts]
-;  `(spec* '~(explicate (ns-name *ns*) `(double-in ~@opts))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; assert ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defonce
