@@ -656,8 +656,10 @@
   and the specs to use if the keys are unqualified. The selection
   pattern indicates what keys must be in the map, and any nested
   maps."
-  [keyset selection]
-  `(spec* '~(explicate (ns-name *ns*) `(select ~keyset ~selection))))
+  ([keyset]
+   `(spec* '~(explicate (ns-name *ns*) `(select ~keyset))))
+  ([keyset selection]
+   `(spec* '~(explicate (ns-name *ns*) `(select ~keyset ~selection)))))
 
 (defmacro multi-spec
   "Takes the name of a spec/predicate-returning multimethod and a
