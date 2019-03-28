@@ -1,5 +1,6 @@
 (ns clojure.test-clojure.spec
   (:require [clojure.spec-alpha2 :as s]
+            [clojure.spec-alpha2.protocols :as prot]
             [clojure.spec-alpha2.gen :as gen]
             [clojure.spec-alpha2.test :as stest]
             [clojure.test :refer :all]))
@@ -30,6 +31,7 @@
 (s/def ::mk2 keyword?)
 (s/def ::mk3 string?)
 (s/def ::m (s/keys :req [::mk1] :opt [::mk2 ::mk3]))
+(s/def ::sch (s/schema [::mk1 ::mk2 ::mk3]))
 
 (deftest conform-explain
   (let [a (s/and #(> % 5) #(< % 10))
@@ -51,7 +53,7 @@
         drange (s/double-in :infinite? false :NaN? false :min 3.1 :max 3.2)
         irange (s/inst-in #inst "1939" #inst "1946")
         select1 (s/select [] [::k1 ::k2])
-        select2 (s/select [] [::k1 {::m [::mk1]}])
+        select2 (s/select [] [::k1 {::sch [::mk1]}])
         ]
     (are [spec x conformed ed]
       (let [co (result-or-ex (s/conform spec x))
@@ -172,6 +174,18 @@
       select2 {::k1 1 ::m {}} ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.core/contains? % ::mk1)) :val {}}
                                            {:pred '(clojure.core/fn [m] (clojure.core/contains? m ::mk1)) :val {}}]
       )))
+
+(deftest schemas
+  ;; nil schema
+  (is (= {} (prot/keyspecs* (s/schema nil))))
+
+  ;; vector schema, qualified keys only
+  (is (= {::a ::a, ::b ::b} (prot/keyspecs* (s/schema [::a ::b]))))
+
+  ;; map schema, unqualified keys only
+  (let [spk (prot/keyspecs* (s/schema {:a int?}))]
+    (is (= (keys spk) [:a]))
+    (is (= `int? (s/form (get spk :a))))))
 
 (deftest describing-evaled-specs
   (let [sp (s/spec #{1 2})]

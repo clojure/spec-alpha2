@@ -17,6 +17,5 @@
   (with-gen* [spec gfn])
   (describe* [spec]))
 
-(defprotocol KeySet
-  (keyset* [spec] "Returns coll of known keys")
-  (unq* [spec] "Returns map of unqualified keys to symbolic specs"))
+(defprotocol Schema
+  (keyspecs* [spec] "Returns map of key to symbolic spec"))

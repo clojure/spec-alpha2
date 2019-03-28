@@ -123,6 +123,9 @@
     form))
 
 (defmulti create-spec
+  "Create a spec object from an explicated spec form. This is an extension
+  point for adding new spec forms. Generally, consumers should instead call
+  `spec*` instead."
   (fn [qform] (first qform)))
 
 (defn- pred-impl
@@ -183,10 +186,28 @@
     (set? qform) (set-impl qform)
     (nil? qform) nil
     (simple-symbol? qform) (throw (IllegalStateException. (str "Symbolic spec must be fully-qualified: " qform)))
-    :else (throw (IllegalStateException. (str "Unknown spec op of type: " (class qform))))))
+    :else (throw (IllegalArgumentException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- specize [x]
   (if (keyword? x) (reg-resolve! x) x))
+
+(defmulti create-schema
+  "Create a schema object from an explicated schema form. This is an extension
+  point for adding new schema forms. Generally, consumers should call `schema*`
+  instead."
+  (fn [sform] (first sform)))
+
+(defn schema*
+  "Returns a schema object given a fully-qualified schema definition.
+  If needed use 'explicate' to qualify forms."
+  [sform]
+  (cond
+    (keyword? sform) (reg-resolve! sform)
+    (vector? sform) (create-schema `(schema ~sform))
+    (map? sform) (create-schema `(schema [~sform]))
+    (c/or (list? sform) (seq? sform)) (create-schema sform)
+    (nil? sform) nil
+    :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
 
 (defn conform
   "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
@@ -348,6 +369,12 @@
           s)
     (symbol (str (.name *ns*)) (str s))))
 
+(defmacro schema
+  "Given a literal vector or map schema, expand to a proper explicated spec
+  form, which when evaluated yields a schema object."
+  [& coll]
+  `(schema* '~(explicate (ns-name *ns*) `(schema ~@coll))))
+
 (defmacro spec
   "Given a function symbol, set of constants, or anonymous function,
   returns a spec object."
@@ -373,8 +400,8 @@
   (let [k (if (symbol? k) (ns-qualify k) k)
         spec-def (cond
                    (keyword? spec-form) spec-form
-                   (symbol? spec-form) `(s/spec ~spec-form)
-                   (set? spec-form) `(s/spec ~spec-form)
+                   (symbol? spec-form) `(spec ~spec-form)
+                   (set? spec-form) `(spec ~spec-form)
 
                    (c/or (list? spec-form) (seq? spec-form))
                    (if (#{'fn 'fn* `c/fn} (first spec-form))

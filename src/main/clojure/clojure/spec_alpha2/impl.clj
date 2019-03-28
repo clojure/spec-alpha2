@@ -12,26 +12,32 @@
     [clojure.spec-alpha2 :as s]
     [clojure.spec-alpha2.protocols :as protocols
      :refer [Spec conform* unform* explain* gen* with-gen* describe*
-             KeySet keyset* unq*]]
+             Schema keyspecs*]]
     [clojure.spec-alpha2.gen :as gen]
     [clojure.set :as set]
     [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)
 
-(defn- keyset
-  "Returns the keyset from a map spec object"
-  [spec]
-  (if (vector? spec)
-    (filter keyword? spec)
-    (keyset* spec)))
+(defmethod s/create-schema `s/schema
+  [[_s coll]]
+  (if (map? coll)
+    (s/create-schema (list _s [coll]))
+    (reify Schema
+      (keyspecs* [_]
+        (let [ks (filter keyword? coll)
+              q-specs (zipmap ks ks)
+              unq-map (apply merge (filter map? coll))
+              unq-specs (zipmap (keys unq-map)
+                                (map s/spec* (vals unq-map)))]
+          (merge unq-specs q-specs))))))
 
-(defn- unq
-  "Returns map of unqualified key to symbolic spec"
-  [spec]
-  (if (vector? spec)
-    (apply merge (filter map? spec))
-    (unq* spec)))
+(defmethod s/create-schema nil
+  [[f & r]])
+
+(defn- keyspecs
+  [schema]
+  (keyspecs* schema))
 
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
@@ -298,10 +304,7 @@
                                    req (conj :req req)
                                    opt (conj :opt opt)
                                    req-un (conj :req-un req-un)
-                                   opt-un (conj :opt-un opt-un))))
-      protocols/KeySet
-      (keyset* [_] (vec (concat req-keys opt-keys)))
-      (unq* [_] nil))))
+                                   opt-un (conj :opt-un opt-un)))))))
 
 (defmethod s/create-spec `s/keys
   [[_ & {:keys [req req-un opt opt-un gen]}]]
@@ -338,21 +341,25 @@
                     :gfn (eval gen)})))
 
 (defn- select-impl
-  [kset selection gfn]
+  [schema-form selection gfn]
   (let [id (java.util.UUID/randomUUID)
+        schema (s/schema* schema-form)
+        key-specs (keyspecs schema)
         req-kset (->> selection (filter keyword?) set)
-        kset-spec (if (vector? kset) kset (s/spec* kset))
-        unq-specs (unq kset-spec)
-        unq-specs (zipmap (keys unq-specs) (map #(s/spec* (s/explicate (ns-name *ns*) %)) (vals unq-specs)))
+        lookup (fn [k]
+                 (or
+                   ;; ignore schemas in registry
+                   (if-let [sp (s/get-spec k)]
+                     (when (s/spec? sp) sp))
+                   (get req-kset k)))
         sub-selects (->> selection (filter map?) (apply merge))
         sub-specs (zipmap (keys sub-selects)
-                          (map (fn [[k s]] (s/spec* `(s/select ~(keyset (s/get-spec k)) ~s)))
+                          (map (fn [[k s]]
+                                 (s/spec* `(s/select ~(vec (some-> k s/get-spec keyspecs keys)) ~s)))
                                sub-selects))
-        opt-kset (set/difference (set/union (-> kset-spec keyset set)
-                                            (-> unq-specs keys set)
+        opt-kset (set/difference (set/union (-> key-specs keys set)
                                             (-> sub-specs keys set))
-                                 req-kset)
-        lookup #(or (s/get-spec %) (get unq-specs %))]
+                                 req-kset)]
     (reify
       Spec
       (conform* [_ x]
@@ -425,12 +432,12 @@
                          (filter #((set qks) (first %)))
                          (apply concat)
                          (apply gen/hash-map)))))))))
-      (with-gen* [_ gfn] (select-impl kset selection gfn))
-      (describe* [_] `(s/select ~kset ~selection)))))
+      (with-gen* [_ gfn] (select-impl schema-form selection gfn))
+      (describe* [_] `(s/select ~schema-form ~selection)))))
 
 (defmethod s/create-spec `s/select
-  [[_ keyset selection]]
-  (select-impl keyset selection nil))
+  [[_ schema selection]]
+  (select-impl schema selection nil))
 
 (defn- nest-impl
   [re-form gfn]
