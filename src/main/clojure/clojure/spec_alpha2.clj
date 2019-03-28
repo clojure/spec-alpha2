@@ -375,6 +375,11 @@
   [& coll]
   `(schema* '~(explicate (ns-name *ns*) `(schema ~@coll))))
 
+(defmacro union
+  "Takes schemas and unions them, returning a schema object"
+  [& schemas]
+  `(schema* '~(explicate (ns-name *ns*) `(union ~@schemas))))
+
 (defmacro spec
   "Given a function symbol, set of constants, or anonymous function,
   returns a spec object."

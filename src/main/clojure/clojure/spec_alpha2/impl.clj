@@ -19,6 +19,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- keyspecs
+  [schema]
+  (keyspecs* schema))
+
+(defmethod s/create-schema nil
+  [[f & r]])
+
 (defmethod s/create-schema `s/schema
   [[_s coll]]
   (if (map? coll)
@@ -32,12 +39,11 @@
                                 (map s/spec* (vals unq-map)))]
           (merge unq-specs q-specs))))))
 
-(defmethod s/create-schema nil
-  [[f & r]])
-
-(defn- keyspecs
-  [schema]
-  (keyspecs* schema))
+(defmethod s/create-schema `s/union
+  [[_ & schemas]]
+  (reify Schema
+    (keyspecs* [_]
+      (->> schemas (map s/schema*) (map keyspecs) (apply merge)))))
 
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
@@ -433,7 +439,10 @@
                          (apply concat)
                          (apply gen/hash-map)))))))))
       (with-gen* [_ gfn] (select-impl schema-form selection gfn))
-      (describe* [_] `(s/select ~schema-form ~selection)))))
+      (describe* [_] `(s/select ~schema-form ~selection))
+
+      Schema
+      (keyspecs* [_] key-specs))))
 
 (defmethod s/create-spec `s/select
   [[_ schema selection]]
