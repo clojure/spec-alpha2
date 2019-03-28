@@ -354,12 +354,7 @@
         req-kset (if (->> selection (filter symbol?) (filter #(= (name %) "*")) seq)
                    (set (keys key-specs))
                    (->> selection (filter keyword?) set))
-        lookup (fn [k]
-                 (or
-                   ;; ignore schemas in registry
-                   (if-let [sp (s/get-spec k)]
-                     (when (s/spec? sp) sp))
-                   (get req-kset k)))
+        lookup #(or (s/get-spec %) (get req-kset %))
         sub-selects (->> selection (filter map?) (apply merge))
         sub-specs (zipmap (keys sub-selects)
                           (map (fn [[k s]]

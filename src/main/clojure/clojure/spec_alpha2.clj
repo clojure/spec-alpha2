@@ -12,7 +12,7 @@
              :refer [conform* unform* explain* gen* with-gen* describe*]]
             [clojure.walk :as walk]
             [clojure.spec-alpha2.gen :as gen])
-  (:import [clojure.spec_alpha2.protocols Spec]))
+  (:import [clojure.spec_alpha2.protocols Spec Schema]))
 
 (alias 'c 'clojure.core)
 (alias 'sa 'clojure.spec.alpha)
@@ -42,10 +42,30 @@
   []
   @registry-ref)
 
+(defn spec?
+  "returns x if x is a spec object, else logical false"
+  [x]
+  (when (c/or (instance? Spec x) (-> x meta (contains? `conform*)))
+    x))
+
+(defn schema?
+  "Returns x if x is a schema object, else logical false"
+  [x]
+  (instance? Schema x))
+
+(defn- lookup
+  [k]
+  (get (registry) (if (keyword? k) k (symbol k))))
+
 (defn get-spec
   "Returns spec registered for keyword/symbol/var k, or nil."
   [k]
-  (get (registry) (if (keyword? k) k (symbol k))))
+  (if-let [sp (lookup k)] (when (spec? sp) sp)))
+
+(defn get-schema
+  "Returns schema registered for keyword/symbol/var k, or nil."
+  [k]
+  (if-let [sp (lookup k)] (when (schema? sp) sp)))
 
 (defn- deep-resolve [reg k]
   (loop [spec k]
@@ -71,12 +91,6 @@
     (c/or (reg-resolve k)
           (throw (Exception. (str "Unable to resolve spec: " k))))
     k))
-
-(defn spec?
-  "returns x if x is a spec object, else logical false"
-  [x]
-  (when (c/or (instance? Spec x) (-> x meta (contains? `conform*)))
-    x))
 
 (defn regex?
   "returns x if x is a (clojure.spec) regex op, else logical false"
