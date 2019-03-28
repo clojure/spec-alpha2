@@ -54,6 +54,7 @@
         irange (s/inst-in #inst "1939" #inst "1946")
         select1 (s/select [] [::k1 ::k2])
         select2 (s/select [] [::k1 {::sch [::mk1]}])
+        select* (s/select [::k1 ::k2] [*])
         ]
     (are [spec x conformed ed]
       (let [co (result-or-ex (s/conform spec x))
@@ -173,6 +174,12 @@
       ;; problems here from both the registered key in the outer map and from missing selection
       select2 {::k1 1 ::m {}} ::s/invalid [{:pred '(clojure.core/fn [%] (clojure.core/contains? % ::mk1)) :val {}}
                                            {:pred '(clojure.core/fn [m] (clojure.core/contains? m ::mk1)) :val {}}]
+
+      select* {::k1 1 ::k2 :a} {::k1 1 ::k2 :a} nil
+      select* "oops" ::s/invalid [{:pred 'clojure.core/map? :val "oops"}]
+      select* {::k1 1} ::s/invalid [{:pred '(clojure.core/fn [m] (clojure.core/contains? m ::k2)) :val {::k1 1}}]
+      select* {::k1 1 ::k2 5} ::s/invalid [{:pred 'clojure.core/keyword? :val 5}]
+
       )))
 
 (deftest schemas

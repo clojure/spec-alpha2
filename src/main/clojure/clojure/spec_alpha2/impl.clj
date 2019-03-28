@@ -351,7 +351,9 @@
   (let [id (java.util.UUID/randomUUID)
         schema (s/schema* schema-form)
         key-specs (keyspecs schema)
-        req-kset (->> selection (filter keyword?) set)
+        req-kset (if (->> selection (filter symbol?) (filter #(= (name %) "*")) seq)
+                   (set (keys key-specs))
+                   (->> selection (filter keyword?) set))
         lookup (fn [k]
                  (or
                    ;; ignore schemas in registry
