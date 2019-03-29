@@ -358,7 +358,7 @@
         sub-selects (->> selection (filter map?) (apply merge))
         sub-specs (zipmap (keys sub-selects)
                           (map (fn [[k s]]
-                                 (s/spec* `(s/select ~(vec (some-> k s/get-spec keyspecs keys)) ~s)))
+                                 (s/spec* `(s/select ~(vec (some-> k s/get-schema keyspecs keys)) ~s)))
                                sub-selects))
         opt-kset (set/difference (set/union (-> key-specs keys set)
                                             (-> sub-specs keys set))
@@ -422,9 +422,9 @@
                 ogen (fn [k s]
                        (when-not (recur-limit? rmap id path k)
                          [k (gen/delay (#'s/gensub s overrides (conj path k) rmap k))]))
-                req-specs (map #(or (sub-specs %) (lookup %)) req-kset)
+                req-specs (->> req-kset (map #(or (sub-specs %) (lookup %))) (remove nil?))
                 reqs (map rgen req-kset req-specs)
-                opt-specs (map #(or (sub-specs %) (lookup %)) opt-kset)
+                opt-specs (->> opt-kset (map #(or (sub-specs %) (lookup %))) (remove nil?))
                 opts (remove nil? (map ogen opt-kset opt-specs))]
             (when (every? identity (concat (map second reqs) (map second opts)))
               (gen/bind
