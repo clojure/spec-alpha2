@@ -354,7 +354,7 @@
         req-kset (if (->> selection (filter symbol?) (filter #(= (name %) "*")) seq)
                    (set (keys key-specs))
                    (->> selection (filter keyword?) set))
-        lookup #(or (s/get-spec %) (get req-kset %))
+        lookup #(if (qualified-keyword? %) (s/get-spec %) (get key-specs %))
         sub-selects (->> selection (filter map?) (apply merge))
         sub-specs (zipmap (keys sub-selects)
                           (map (fn [[k s]]
