@@ -436,7 +436,7 @@
                          (apply concat)
                          (apply gen/hash-map)))))))))
       (with-gen* [_ gfn] (select-impl schema-form selection gfn))
-      (describe* [_] `(s/select ~schema-form ~@(vec selection)))
+      (describe* [_] `(s/select ~schema-form ~@(if selection (vector selection) [])))
 
       Schema
       (keyspecs* [_] key-specs))))
