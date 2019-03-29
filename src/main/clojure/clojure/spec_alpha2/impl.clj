@@ -354,14 +354,17 @@
         req-kset (if (->> selection (filter symbol?) (filter #(= (name %) "*")) seq)
                    (set (keys key-specs))
                    (->> selection (filter keyword?) set))
-        lookup #(if (qualified-keyword? %) (s/get-spec %) (get key-specs %))
         sub-selects (->> selection (filter map?) (apply merge))
-        sub-specs (zipmap (keys sub-selects)
-                          (map (fn [[k s]]
-                                 (s/spec* `(s/select ~(vec (some-> k s/get-schema keyspecs keys)) ~s)))
-                               sub-selects))
+        lookup #(if (qualified-keyword? %)
+                  (or (s/get-spec %)
+                      (when-let [schema-obj (s/get-schema %)]
+                        (let [sub-schema (vec (some-> schema-obj keyspecs keys))
+                              sub-selection (get sub-selects % [])]
+                          (s/spec* `(s/select ~sub-schema ~sub-selection))))
+                      (s/spec* `(s/select ~(vec))))
+                  (get key-specs %))
         opt-kset (set/difference (set/union (-> key-specs keys set)
-                                            (-> sub-specs keys set))
+                                            (-> sub-selects keys set))
                                  req-kset)]
     (reify
       Spec
@@ -377,7 +380,7 @@
                                 v)]
                 (if (s/invalid? conformed)
                   (recur ::s/invalid nil)
-                  (if-let [sub-spec (get sub-specs k)]
+                  (if-let [sub-spec (lookup k)]
                     (if (not (s/valid? sub-spec (get x k)))
                       (recur ::s/invalid nil)
                       (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks))
@@ -394,26 +397,29 @@
       (explain* [_ path via in x]
         (if (not (map? x))
           [{:path path :pred `map? :val x :via via :in in}]
-          (vec (concat
-                 ;; required key missing
-                 (keep (fn [k]
-                         (when-not (contains? x k)
-                           {:path path :pred `(fn [~'m] (contains? ~'m ~k)) :val x :via via :in in}))
-                       req-kset)
-                 ;; registered key has conforming v
-                 (mapcat identity
-                   (keep
-                     (fn [[k v]]
-                       (when-let [sp (lookup k)]
-                         (explain-1 (s/form sp) sp (conj path k) via (conj in k) v)))
-                     x))
-                 ;; nested select matches
-                 (mapcat identity
-                    (keep
-                      (fn [[k v]]
-                        (when (contains? x k)
-                          (explain-1 (s/form v) v (conj path k) via (conj in k) (get x k))))
-                      sub-specs))))))
+          (-> (concat
+                ;; required key missing
+                (->> req-kset
+                     (keep (fn [k]
+                             (when-not (contains? x k)
+                               {:path path :pred `(fn [~'m] (contains? ~'m ~k)) :val x :via via :in in}))))
+                ;; registered key has conforming v
+                (->> x
+                     (keep
+                       (fn [[k v]]
+                         (when-let [sp (lookup k)]
+                           (explain-1 (s/form sp) sp (conj path k) via (conj in k) v))))
+                     (mapcat identity))
+                ;; nested select matches
+                (->> sub-selects
+                     (keep
+                       (fn [[k _]]
+                         (when (contains? x k)
+                           (when-let [sp (lookup k)]
+                             (explain-1 (s/form sp) sp (conj path k) via (conj in k) (get x k))))))
+                     (mapcat identity)))
+              distinct
+              vec)))
       (gen* [_ overrides path rmap]
         (if gfn
           (gfn)
@@ -422,9 +428,9 @@
                 ogen (fn [k s]
                        (when-not (recur-limit? rmap id path k)
                          [k (gen/delay (#'s/gensub s overrides (conj path k) rmap k))]))
-                req-specs (->> req-kset (map #(or (sub-specs %) (lookup %))) (remove nil?))
+                req-specs (->> req-kset (map lookup) (remove nil?))
                 reqs (map rgen req-kset req-specs)
-                opt-specs (->> opt-kset (map #(or (sub-specs %) (lookup %))) (remove nil?))
+                opt-specs (->> opt-kset (map lookup) (remove nil?))
                 opts (remove nil? (map ogen opt-kset opt-specs))]
             (when (every? identity (concat (map second reqs) (map second opts)))
               (gen/bind
