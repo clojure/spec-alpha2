@@ -23,14 +23,19 @@
   [schema]
   (keyspecs* schema))
 
-(defmethod s/create-schema nil
-  [[f & r]])
+(defn- schema-impl
+  [coll gfn]
+  (let [coll (if (map? coll) [coll] coll)]
+    (reify
+      Spec
+      (conform* [_ x])
+      (unform* [_ y])
+      (explain* [_ path via in x])
+      (gen* [_ overrides path rmap])
+      (with-gen* [_ gfn])
+      (describe* [_])
 
-(defmethod s/create-schema `s/schema
-  [[_s coll]]
-  (if (map? coll)
-    (s/create-schema (list _s [coll]))
-    (reify Schema
+      Schema
       (keyspecs* [_]
         (let [ks (filter keyword? coll)
               q-specs (zipmap ks ks)
@@ -39,11 +44,28 @@
                                 (map s/spec* (vals unq-map)))]
           (merge unq-specs q-specs))))))
 
-(defmethod s/create-schema `s/union
-  [[_ & schemas]]
-  (reify Schema
+(defmethod s/create-spec `s/schema
+  [[_s coll]]
+  (schema-impl coll nil))
+
+(defn- union-impl
+  [schemas gfn]
+  (reify
+    Spec
+    (conform* [_ x])
+    (unform* [_ y])
+    (explain* [_ path via in x])
+    (gen* [_ overrides path rmap])
+    (with-gen* [_ gfn])
+    (describe* [_])
+
+    Schema
     (keyspecs* [_]
       (->> schemas (map s/schema*) (map keyspecs) (apply merge)))))
+
+(defmethod s/create-spec `s/union
+  [[_ & schemas]]
+  (union-impl schemas nil))
 
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
@@ -356,11 +378,12 @@
                    (->> selection (filter keyword?) set))
         sub-selects (->> selection (filter map?) (apply merge))
         lookup #(if (qualified-keyword? %)
-                  (or (s/get-spec %)
-                      (when-let [schema-obj (s/get-schema %)]
-                        (let [sub-schema (vec (some-> schema-obj keyspecs keys))
-                              sub-selection (get sub-selects % [])]
-                          (s/spec* `(s/select ~sub-schema ~sub-selection)))))
+                  (let [schema-obj (s/get-spec %)]
+                    (if (s/schema? schema-obj)
+                      (let [sub-schema (vec (some-> schema-obj keyspecs keys))
+                            sub-selection (get sub-selects % [])]
+                        (s/spec* `(s/select ~sub-schema ~sub-selection)))
+                      schema-obj))
                   (get key-specs %))
         opt-kset (set/difference (set/union (-> key-specs keys set)
                                             (-> sub-selects keys set))

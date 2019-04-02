@@ -53,19 +53,10 @@
   [x]
   (instance? Schema x))
 
-(defn- lookup
-  [k]
-  (get (registry) (if (keyword? k) k (symbol k))))
-
 (defn get-spec
   "Returns spec registered for keyword/symbol/var k, or nil."
   [k]
-  (if-let [sp (lookup k)] (when (spec? sp) sp)))
-
-(defn get-schema
-  "Returns schema registered for keyword/symbol/var k, or nil."
-  [k]
-  (if-let [sp (lookup k)] (when (schema? sp) sp)))
+  (get (registry) (if (keyword? k) k (symbol k))))
 
 (defn- deep-resolve [reg k]
   (loop [spec k]
@@ -205,21 +196,15 @@
 (defn- specize [x]
   (if (keyword? x) (reg-resolve! x) x))
 
-(defmulti create-schema
-  "Create a schema object from an explicated schema form. This is an extension
-  point for adding new schema forms. Generally, consumers should call `schema*`
-  instead."
-  (fn [sform] (first sform)))
-
 (defn schema*
   "Returns a schema object given a fully-qualified schema definition.
   If needed use 'explicate' to qualify forms."
   [sform]
   (cond
     (keyword? sform) (reg-resolve! sform)
-    (vector? sform) (create-schema `(schema ~sform))
-    (map? sform) (create-schema `(schema [~sform]))
-    (c/or (list? sform) (seq? sform)) (create-schema sform)
+    (vector? sform) (create-spec `(schema ~sform))
+    (map? sform) (create-spec `(schema [~sform]))
+    (c/or (list? sform) (seq? sform)) (create-spec sform)
     (nil? sform) nil
     :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
 
@@ -387,12 +372,12 @@
   "Given a literal vector or map schema, expand to a proper explicated spec
   form, which when evaluated yields a schema object."
   [& coll]
-  `(schema* '~(explicate (ns-name *ns*) `(schema ~@coll))))
+  `(spec* '~(explicate (ns-name *ns*) `(schema ~@coll))))
 
 (defmacro union
   "Takes schemas and unions them, returning a schema object"
   [& schemas]
-  `(schema* '~(explicate (ns-name *ns*) `(union ~@schemas))))
+  `(spec* '~(explicate (ns-name *ns*) `(union ~@schemas))))
 
 (defmacro spec
   "Given a function symbol, set of constants, or anonymous function,
