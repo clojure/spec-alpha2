@@ -52,6 +52,9 @@
         lrange (s/int-in 7 42)
         drange (s/double-in :infinite? false :NaN? false :min 3.1 :max 3.2)
         irange (s/inst-in #inst "1939" #inst "1946")
+        schema1 (s/schema [::k1 ::k2])
+        schema2 (s/schema {:a int? :b keyword?})
+        union (s/union [::k1 ::k2] {:a int? :b keyword?})
         select1 (s/select [] [::k1 ::k2])
         select2 (s/select [] [::k1 {::sch [::mk1]}])
         select* (s/select [::k1 ::k2] [*])
@@ -163,6 +166,20 @@
       coll [:a :b] [:a :b] nil
       coll (map identity [:a :b]) '(:a :b) nil
       ;;coll [:a "b"] ::s/invalid '[{:pred (coll-checker keyword?), :val [:a b]}]
+
+      schema1 {} {} nil
+      schema1 {::k1 1 ::k2 :a} {::k1 1 ::k2 :a} nil
+      schema1 "oops" ::s/invalid [{:pred 'clojure.core/map? :val "oops"}]
+      schema1 {::k1 :a ::k2 1} ::s/invalid [{:pred 'clojure.core/int? :val :a} {:pred 'clojure.core/keyword? :val 1}]
+
+      schema2 {} {} nil
+      schema2 {:a 10 :b :x} {:a 10 :b :x} nil
+      schema2 {:a :x :b 10} ::s/invalid [{:pred 'clojure.core/int? :val :x} {:pred 'clojure.core/keyword? :val 10}]
+
+      union {} {} nil
+      union {::k1 1 ::k2 :a :a 1 :b :x} {::k1 1 ::k2 :a :a 1 :b :x} nil
+      union "oops" ::s/invalid [{:pred 'clojure.core/map? :val "oops"}]
+      union {::k1 :a ::k2 1} ::s/invalid [{:pred 'clojure.core/int? :val :a} {:pred 'clojure.core/keyword? :val 1}]
 
       select1 {::k1 1 ::k2 :a} {::k1 1 ::k2 :a} nil
       select1 "oops" ::s/invalid [{:pred 'clojure.core/map? :val "oops"}]
