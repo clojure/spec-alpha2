@@ -391,15 +391,28 @@
   [[_s coll]]
   (schema-impl coll nil))
 
-(defmethod s/create-spec `s/union
-  [[_ & schemas]]
+(defn- union-impl
+  [schemas gfn]
   (let [ks (->> schemas (map s/schema*) (map keyspecs) (apply merge))
         qk (filterv qualified-keyword? (keys ks))
         ukv (reduce-kv (fn [m k v]
                          (if (simple-keyword? k)
-                           (assoc m k (if (keyword? v) v (s/form v))) m))
-                       {} qk)]
-    (schema-impl (if (seq ukv) (conj qk ukv) qk) nil)))
+                           (assoc m k (if (keyword? v) v (s/form v)))
+                           m))
+              {} ks)
+        impl (schema-impl (if (seq ukv) (conj qk ukv) qk) nil)]
+    (reify
+      Spec
+      (conform* [_ x] (conform* impl x))
+      (unform* [_ x] (unform* impl x))
+      (explain* [_ path via in x] (explain* impl path via in x))
+      (gen* [_ overrides path rmap] (gen* impl overrides path rmap))
+      (with-gen* [_ gfn] (union-impl schemas gfn))
+      (describe* [_] `(s/union ~@schemas)))))
+
+(defmethod s/create-spec `s/union
+  [[_ & schemas]]
+  (union-impl schemas nil))
 
 (defn- select-impl
   [schema-form selection gfn]

@@ -199,6 +199,76 @@
 
       )))
 
+(deftest forms
+  ;; same
+  (are [s f] (= (s/form s) f)
+    ;; FIX - getting gensym args right now
+    ;;(s/and #(> % 5) #(< % 10))
+    ;;'(clojure.spec-alpha2/and (fn [%] (> % 5)) (fn [%] (< % 10)))
+
+    (s/or :s string? :k keyword?)
+    '(clojure.spec-alpha2/or :s clojure.core/string? :k clojure.core/keyword?)
+
+    (s/cat :a string? :b keyword?)
+    '(clojure.spec-alpha2/cat :a clojure.core/string? :b clojure.core/keyword?)
+
+    (s/alt :a string? :b keyword?)
+    '(clojure.spec-alpha2/alt :a clojure.core/string? :b clojure.core/keyword?)
+
+    (s/* keyword?)
+    '(clojure.spec-alpha2/* clojure.core/keyword?)
+
+    (s/+ keyword?)
+    '(clojure.spec-alpha2/+ clojure.core/keyword?)
+
+    (s/? keyword?)
+    '(clojure.spec-alpha2/? clojure.core/keyword?)
+
+    (s/& (s/* keyword?) pos?)
+    '(clojure.spec-alpha2/& (clojure.spec-alpha2/* clojure.core/keyword?) clojure.core/pos?)
+
+    (s/& (s/* keyword?) #{[:a]})
+    '(clojure.spec-alpha2/& (clojure.spec-alpha2/* clojure.core/keyword?) #{[:a]})
+
+    (s/map-of keyword? string?)
+    '(clojure.spec-alpha2/map-of clojure.core/keyword? clojure.core/string?)
+
+    (s/map-of (s/and keyword? (s/conformer name)) any? :conform-keys true)
+    '(clojure.spec-alpha2/map-of (clojure.spec-alpha2/and clojure.core/keyword? (clojure.spec-alpha2/conformer clojure.core/name)) clojure.core/any? :conform-keys true)
+
+    (s/coll-of (s/cat :tag keyword? :val any?) :kind list?)
+    '(clojure.spec-alpha2/coll-of (clojure.spec-alpha2/cat :tag clojure.core/keyword? :val clojure.core/any?) :kind clojure.core/list?)
+
+    (s/coll-of keyword? :kind vector?)
+    '(clojure.spec-alpha2/coll-of clojure.core/keyword? :kind clojure.core/vector?)
+
+    (s/int-in 7 42)
+    '(clojure.spec-alpha2/int-in 7 42)
+
+    (s/double-in :infinite? false :NaN? false :min 3.1 :max 3.2)
+    '(clojure.spec-alpha2/double-in :infinite? false :NaN? false :min 3.1 :max 3.2)
+
+    (s/inst-in #inst "1939" #inst "1946")
+    '(clojure.spec-alpha2/inst-in #inst "1939" #inst "1946")
+
+    (s/schema [::k1 ::k2])
+    '(clojure.spec-alpha2/schema [:clojure.test-clojure.spec/k1 :clojure.test-clojure.spec/k2])
+
+    (s/schema {:a int? :b keyword?})
+    '(clojure.spec-alpha2/schema [{:a clojure.core/int? :b clojure.core/keyword?}])
+
+    (s/union [::k1 ::k2] {:a int? :b keyword?})
+    '(clojure.spec-alpha2/union [:clojure.test-clojure.spec/k1 :clojure.test-clojure.spec/k2] {:a clojure.core/int? :b clojure.core/keyword?})
+
+    (s/select [] [::k1 ::k2])
+    '(clojure.spec-alpha2/select [] [:clojure.test-clojure.spec/k1 :clojure.test-clojure.spec/k2])
+
+    (s/select [] [::k1 {::sch [::mk1]}])
+    '(clojure.spec-alpha2/select [] [:clojure.test-clojure.spec/k1 {:clojure.test-clojure.spec/sch [:clojure.test-clojure.spec/mk1]}])
+
+    ;;(s/select [::k1 ::k2] [*])  ;; FIX - wildcard
+    ))
+
 (deftest schemas
   ;; nil schema
   (is (= {} (prot/keyspecs* (s/schema nil))))
