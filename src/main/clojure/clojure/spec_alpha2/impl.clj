@@ -19,54 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- keyspecs
-  [schema]
-  (keyspecs* schema))
-
-(defn- schema-impl
-  [coll gfn]
-  (let [coll (if (map? coll) [coll] coll)]
-    (reify
-      Spec
-      (conform* [_ x])
-      (unform* [_ y])
-      (explain* [_ path via in x])
-      (gen* [_ overrides path rmap])
-      (with-gen* [_ gfn])
-      (describe* [_])
-
-      Schema
-      (keyspecs* [_]
-        (let [ks (filter keyword? coll)
-              q-specs (zipmap ks ks)
-              unq-map (apply merge (filter map? coll))
-              unq-specs (zipmap (keys unq-map)
-                                (map s/spec* (vals unq-map)))]
-          (merge unq-specs q-specs))))))
-
-(defmethod s/create-spec `s/schema
-  [[_s coll]]
-  (schema-impl coll nil))
-
-(defn- union-impl
-  [schemas gfn]
-  (reify
-    Spec
-    (conform* [_ x])
-    (unform* [_ y])
-    (explain* [_ path via in x])
-    (gen* [_ overrides path rmap])
-    (with-gen* [_ gfn])
-    (describe* [_])
-
-    Schema
-    (keyspecs* [_]
-      (->> schemas (map s/schema*) (map keyspecs) (apply merge)))))
-
-(defmethod s/create-spec `s/union
-  [[_ & schemas]]
-  (union-impl schemas nil))
-
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
   [spec-or-k]
@@ -367,6 +319,96 @@
                     :pred-exprs (mapv eval pred-exprs)
                     :keys-pred (eval keys-pred)
                     :gfn (eval gen)})))
+
+(defn- keyspecs
+  [schema]
+  (keyspecs* schema))
+
+(defn- schema-impl
+  [coll gfn]
+  (let [coll (if (map? coll) [coll] coll)
+        key-specs (let [ks (filter keyword? coll)
+                        q-specs (zipmap ks ks)
+                        unq-map (apply merge (filter map? coll))
+                        unq-specs (zipmap (keys unq-map)
+                                          (map s/spec* (vals unq-map)))]
+                    (merge unq-specs q-specs))
+        lookup #(or (s/get-spec %) (get key-specs %))]
+    (reify
+      Spec
+      (conform* [_ x]
+        (if (not (map? x))
+          ::s/invalid
+          (loop [ret x ;; either conformed map or ::s/invalid
+                 [[k v] & ks :as m] x]
+            (if k
+              (let [conformed (if-let [sp (lookup k)] (s/conform sp v) v)]
+                (if (s/invalid? conformed)
+                  (recur ::s/invalid nil)
+                  (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)))
+              ret))))
+      (unform* [_ x]
+        (loop [ret x, [[k v] & ks :as m] x]
+          (if-not m
+            ret
+            (if-let [sp (lookup k)]
+              (let [uv (s/unform sp v)]
+                (recur (if (identical? uv v) ret (assoc ret k uv)) ks))
+              (recur ret ks)))))
+      (explain* [_ path via in x]
+        (if (not (map? x))
+          [{:path path :pred `map? :val x :via via :in in}]
+          (reduce-kv
+            (fn [p k v]
+              (if-let [sp (lookup k)]
+                (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v))
+                p))
+            [] x)))
+      (gen* [_ overrides path rmap]
+        (if gfn
+          (gfn)
+          (let [ogen (fn [k s]
+                       [k (gen/delay (#'s/gensub s overrides (conj path k) rmap k))])
+                opt-kset (keys key-specs)
+                opt-specs (->> opt-kset (map lookup) (remove nil?))
+                opts (remove nil? (map ogen opt-kset opt-specs))]
+            (when (every? identity (map second opts))
+              (gen/bind
+                (or-k-gen opt-kset)
+                (fn [opt-ks]
+                  (let [qks (flatten opt-ks)]
+                    (->> opts
+                         (filter #((set qks) (first %)))
+                         (apply concat)
+                         (apply gen/hash-map)))))))))
+      (with-gen* [_ gfn] (schema-impl coll gfn))
+      (describe* [_] `(s/schema ~coll))
+
+      Schema
+      (keyspecs* [_] key-specs))))
+
+(defmethod s/create-spec `s/schema
+  [[_s coll]]
+  (schema-impl coll nil))
+
+(defn- union-impl
+  [schemas gfn]
+  (reify
+    Spec
+    (conform* [_ x])
+    (unform* [_ y])
+    (explain* [_ path via in x])
+    (gen* [_ overrides path rmap])
+    (with-gen* [_ gfn])
+    (describe* [_])
+
+    Schema
+    (keyspecs* [_]
+      (->> schemas (map s/schema*) (map keyspecs) (apply merge)))))
+
+(defmethod s/create-spec `s/union
+  [[_ & schemas]]
+  (union-impl schemas nil))
 
 (defn- select-impl
   [schema-form selection gfn]
