@@ -521,10 +521,10 @@
                          (apply concat)
                          (apply gen/hash-map)))))))))
       (with-gen* [_ gfn] (select-impl schema-form selection gfn))
-      (describe* [_] `(s/select ~schema-form ~@(if selection (vector selection) []))))))
+      (describe* [_] `(s/select ~schema-form ~selection)))))
 
 (defmethod s/create-spec `s/select
-  [[_ schema & [selection]]]
+  [[_ schema selection]]
   (select-impl schema selection nil))
 
 (defn- nest-impl
