@@ -12,7 +12,8 @@
     [clojure.spec-alpha2 :as s]
     [clojure.spec-alpha2.protocols :as protocols
      :refer [Spec conform* unform* explain* gen* with-gen* describe*
-             Schema keyspecs*]]
+             Schema keyspecs*
+             Select]]
     [clojure.spec-alpha2.gen :as gen]
     [clojure.set :as set]
     [clojure.walk :as walk]))
@@ -324,16 +325,25 @@
   [schema]
   (keyspecs* schema))
 
+(defn- select?
+  [spec-ref]
+  (if-let [sp (if (qualified-keyword? spec-ref) (#'s/reg-resolve! spec-ref) spec-ref)]
+    (satisfies? Select sp)
+    false))
+
 (defn- schema-impl
   [coll gfn]
   (let [coll (if (map? coll) [coll] coll)
-        key-specs (let [ks (filter keyword? coll)
-                        q-specs (zipmap ks ks)
-                        unq-map (apply merge (filter map? coll))
-                        unq-specs (zipmap (keys unq-map)
-                                          (map s/spec* (vals unq-map)))]
-                    (merge unq-specs q-specs))
+        ks (filter keyword? coll)
+        qks (zipmap ks ks)
+        unq-map (apply merge (filter map? coll))
+        unq-specs (map s/spec* (vals unq-map))
+        uqks (zipmap (keys unq-map) unq-specs)
+        key-specs (merge uqks qks)
         lookup #(or (s/get-spec %) (get key-specs %))]
+    ;; schemas cannot contain nested select specs
+    (assert (every? #(if-let [sp (s/get-spec %)] (not (select? sp)) true) ks))
+    (assert (every? #(not (select? %)) unq-specs))
     (reify
       Spec
       (conform* [_ x]
@@ -435,6 +445,7 @@
                                             (-> sub-selects keys set))
                                  req-kset)]
     (reify
+      Select
       Spec
       (conform* [_ x]
         (if (or (not (map? x))

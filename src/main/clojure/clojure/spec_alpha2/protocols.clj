@@ -19,3 +19,6 @@
 
 (defprotocol Schema
   (keyspecs* [spec] "Returns map of key to symbolic spec"))
+
+(defprotocol Select
+  "Marker protocol for selects")
