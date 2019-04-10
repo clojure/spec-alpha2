@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>spec-alpha2</artifactId>
+  <version>0.2.177-SNAPSHOT</version>
+  <name>spec-alpha2</name>
+  <description>Specification of data and functions</description>
+
+  <scm>
+    <connection>scm:git:git://github.com/clojure/spec-alpha2.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/clojure/spec-alpha2.git</developerConnection>
+    <tag>HEAD</tag>
+    <url>https://github.com/clojure/spec-alpha2</url>
+  </scm>
+
+  <licenses>
+    <license>
+      <name>Eclipse Public License 1.0</name>
+      <url>http://opensource.org/licenses/eclipse-1.0.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <parent>
+    <groupId>org.clojure</groupId>
+    <artifactId>pom.contrib</artifactId>
+    <version>0.2.2</version>
+  </parent>
+
+  <developers>
+    <developer>
+      <id>richhickey</id>
+      <name>Rich Hickey</name>
+      <url>http://clojure.org</url>
+    </developer>
+  </developers>
+
+  <properties>
+    <clojure.version>1.10.0</clojure.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>clojure</artifactId>
+      <version>${clojure.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>test.check</artifactId>
+      <version>0.9.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+	<version>1.6.0</version>
+	<executions>
+          <execution>
+            <id>compile-clojure</id>
+            <phase>compile</phase>
+            <goals><goal>exec</goal></goals>
+            <configuration>
+              <executable>java</executable>
+              <classpathScope>compile</classpathScope>
+                <arguments>
+                <argument>-Dclojure.compile.path=${project.build.directory}/classes</argument>
+                <argument>-Dclojure.spec.skip-macros=true</argument>
+                <argument>-classpath</argument>
+                <classpath />
+                <argument>clojure.lang.Compile</argument>
+                <argument>clojure.spec-alpha2.protocols</argument>
+                <argument>clojure.spec-alpha2</argument>
+                <argument>clojure.spec-alpha2.impl</argument>
+                <argument>clojure.spec-alpha2.gen</argument>
+                <argument>clojure.spec-alpha2.test</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.theoryinpractise</groupId>
+        <artifactId>clojure-maven-plugin</artifactId>
+        <version>1.7.1</version>
+        <executions>
+          <execution>
+            <id>clojure-compile</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>clojure-test</id>
+            <phase>test</phase>
+          </execution>
+        </executions>
+	<configuration>
+          <sourceDirectories>
+            <sourceDirectory>src/main/clojure</sourceDirectory>
+          </sourceDirectories>
+          <testSourceDirectories>
+            <testSourceDirectory>src/test/clojure</testSourceDirectory>
+          </testSourceDirectories>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
