@@ -421,7 +421,7 @@
 (defn close-specs
   "Given namespace-qualified keywords, switches those specs to closed mode checking."
   [& ks]
-  (doseq [k ks]
+  (doseq [k (if (seq ks) ks (c/keys (registry)))]
     (let [s (get-spec k)]
       (if (c/and s (satisfies? protocols/Closable s))
         (register k (close* s))))))
@@ -429,7 +429,7 @@
 (defn open-specs
   "Given namespace-qualified keywords, switches those specs to open mode checking."
   [& ks]
-  (doseq [k ks]
+  (doseq [k (if (seq ks) ks (c/keys (registry)))]
     (let [s (get-spec k)]
       (if (c/and s (satisfies? protocols/Closed s))
         (register k (open* s))))))
