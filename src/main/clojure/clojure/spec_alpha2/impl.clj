@@ -13,7 +13,9 @@
     [clojure.spec-alpha2.protocols :as protocols
      :refer [Spec conform* unform* explain* gen* with-gen* describe*
              Schema keyspecs*
-             Select]]
+             Select
+             Closable close*
+             Closed open* conform-closed* explain-closed*]]
     [clojure.spec-alpha2.gen :as gen]
     [clojure.set :as set]
     [clojure.walk :as walk]))
@@ -395,7 +397,33 @@
       (describe* [_] `(s/schema ~coll))
 
       Schema
-      (keyspecs* [_] key-specs))))
+      (keyspecs* [_] key-specs)
+
+      Closable
+      (close* [s]
+        (reify
+          Spec
+          (conform* [sp x] (conform-closed* sp x))
+          (explain* [sp path via in x] (explain-closed* sp path via in x))
+          (gen* [_ overrides path rmap] (gen* s overrides path rmap))
+          (with-gen* [_ gfn] (close* (with-gen* s gfn)))
+          (describe* [_] (describe* s))
+
+          Closed
+          (open* [_] s)
+          (conform-closed* [_ x]
+            (let [ret (conform* s x)]
+              (if (s/invalid? ret)
+                ::s/invalid
+                (if (set/subset? (-> key-specs keys set) (-> ret keys set))
+                  ret
+                  ::s/invalid))))
+          (explain-closed* [_ path via in x]
+            (let [ret (explain* s path via in x)
+                  ks (-> key-specs keys set)]
+              (if (set/subset? ks (-> ret keys set))
+                ret
+                (into ret [{:path path :pred `(fn [%] (set/subset? ~ks (set (keys ~'%)))) :val x :via via :in in}])))))))))
 
 (defmethod s/create-spec `s/schema
   [[_s coll]]

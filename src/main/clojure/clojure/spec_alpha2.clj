@@ -9,7 +9,7 @@
 (ns clojure.spec-alpha2
   (:refer-clojure :exclude [+ * and assert or cat def keys merge])
   (:require [clojure.spec-alpha2.protocols :as protocols
-             :refer [conform* unform* explain* gen* with-gen* describe*]]
+             :refer [conform* unform* explain* gen* with-gen* describe* close* open*]]
             [clojure.walk :as walk]
             [clojure.spec-alpha2.gen :as gen])
   (:import [clojure.spec_alpha2.protocols Spec Schema]))
@@ -417,6 +417,22 @@
   "Takes a spec and a no-arg, generator-returning fn and returns a version of that spec that uses that generator"
   [spec gen-fn]
   `(spec* '~(explicate (ns-name *ns*) `(with-gen ~spec ~gen-fn))))
+
+(defn close-specs
+  "Given namespace-qualified keywords, switches those specs to closed mode checking."
+  [& ks]
+  (doseq [k ks]
+    (let [s (get-spec k)]
+      (if (c/and s (satisfies? protocols/Closable s))
+        (register k (close* s))))))
+
+(defn open-specs
+  "Given namespace-qualified keywords, switches those specs to open mode checking."
+  [& ks]
+  (doseq [k ks]
+    (let [s (get-spec k)]
+      (if (c/and s (satisfies? protocols/Closed s))
+        (register k (open* s))))))
 
 (defmacro merge
   "Takes map-validating specs (e.g. 'keys' specs) and
