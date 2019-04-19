@@ -9,7 +9,8 @@
 (ns clojure.spec-alpha2
   (:refer-clojure :exclude [+ * and assert or cat def keys merge])
   (:require [clojure.spec-alpha2.protocols :as protocols
-             :refer [conform* unform* explain* gen* with-gen* describe* close* open*]]
+             :refer [conform* unform* explain* gen* with-gen* describe*
+                     conform-closed* explain-closed*]]
             [clojure.walk :as walk]
             [clojure.spec-alpha2.gen :as gen])
   (:import [clojure.spec_alpha2.protocols Spec Schema]))
@@ -35,6 +36,7 @@
   "The number of errors reported by explain in a collection spec'ed with 'every'"
   20)
 
+(defonce ^:private closed-ref (atom #{}))
 (defonce ^:private registry-ref (atom {}))
 
 (defn registry
@@ -56,10 +58,7 @@
 (defn get-spec
   "Returns spec registered for keyword/symbol/var k, or nil."
   [k]
-  (when-let [sp (get (registry) (if (keyword? k) k (symbol k)))]
-    (if (satisfies? protocols/Closed sp)
-      (open* sp)
-      sp)))
+  (get (registry) (if (keyword? k) k (symbol k))))
 
 (defn- deep-resolve [reg k]
   (loop [spec k]
@@ -215,7 +214,10 @@
   "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
 	if value does not match spec, else the (possibly destructured) value."
   [spec x]
-  (conform* (specize spec) x))
+  (let [sp (specize spec)]
+    (if (c/and (contains? @closed-ref spec) (satisfies? protocols/Closable sp))
+      (conform-closed* sp x)
+      (conform* sp x))))
 
 (defn unform
   "Given a spec and a value created by or compliant with a call to
@@ -255,7 +257,10 @@
   (abbrev (form spec)))
 
 (defn explain-data* [spec path via in x]
-  (let [probs (explain* (specize spec) path via in x)]
+  (let [sp (specize spec)
+        probs (if (c/and (contains? @closed-ref spec) (satisfies? protocols/Closable sp))
+                (explain-closed* sp path via in x)
+                (explain* sp path via in x))]
     (when-not (empty? probs)
       {::sa/problems probs
        ::sa/spec spec
@@ -316,8 +321,10 @@
 (defn valid?
   "Helper function that returns true when x is valid for spec."
   [spec x]
-  (let [spec (specize spec)]
-    (not (invalid? (conform* spec x)))))
+  (let [sp (specize spec)]
+    (if (c/and (contains? @closed-ref spec) (satisfies? protocols/Closable sp))
+      (not (invalid? (conform-closed* sp x)))
+      (not (invalid? (conform* sp x))))))
 
 (defn- gensub
   [spec overrides path rmap form]
@@ -424,20 +431,12 @@
 (defn close-specs
   "Given namespace-qualified keywords, switches those specs to closed mode checking."
   [& ks]
-  (let [reg (registry)]
-    (doseq [k (if (seq ks) ks (c/keys reg))]
-      (let [s (get reg k)]
-        (if (c/and s (satisfies? protocols/Closable s))
-          (register k (close* s)))))))
+  (swap! closed-ref into (if (seq ks) ks (c/keys (registry)))))
 
 (defn open-specs
   "Given namespace-qualified keywords, switches those specs to open mode checking."
   [& ks]
-  (let [reg (registry)]
-    (doseq [k (if (seq ks) ks (c/keys reg))]
-      (let [s (get reg k)]
-        (if (c/and s (satisfies? protocols/Closed s))
-          (register k (open* s)))))))
+  (swap! closed-ref #(apply disj % (if (seq ks) ks (c/keys (registry))))))
 
 (defmacro merge
   "Takes map-validating specs (e.g. 'keys' specs) and

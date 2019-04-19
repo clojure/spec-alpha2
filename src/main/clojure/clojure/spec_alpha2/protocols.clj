@@ -25,11 +25,6 @@
 
 (defprotocol Closable
   "A spec that can conform with closed semantics"
-  (close* [spec] "Returns a Closed version of this spec"))
-
-(defprotocol Closed
-  "Protocol for specs that conform with closed semantics"
   (conform-closed* [spec x])
-  (explain-closed* [spec path via in x])
-  (open* [spec]))
+  (explain-closed* [spec path via in x]))
 

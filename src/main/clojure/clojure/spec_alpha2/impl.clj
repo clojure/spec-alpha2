@@ -14,8 +14,7 @@
      :refer [Spec conform* unform* explain* gen* with-gen* describe*
              Schema keyspecs*
              Select
-             Closable close*
-             Closed open* conform-closed* explain-closed*]]
+             Closable conform-closed* explain-closed*]]
     [clojure.spec-alpha2.gen :as gen]
     [clojure.set :as set]
     [clojure.walk :as walk]))
@@ -400,30 +399,19 @@
       (keyspecs* [_] key-specs)
 
       Closable
-      (close* [s]
-        (reify
-          Spec
-          (conform* [sp x] (conform-closed* sp x))
-          (explain* [sp path via in x] (explain-closed* sp path via in x))
-          (gen* [_ overrides path rmap] (gen* s overrides path rmap))
-          (with-gen* [_ gfn] (close* (with-gen* s gfn)))
-          (describe* [_] (describe* s))
-
-          Closed
-          (open* [_] s)
-          (conform-closed* [_ x]
-            (let [ret (conform* s x)]
-              (if (s/invalid? ret)
-                ::s/invalid
-                (if (set/subset? (-> key-specs keys set) (-> ret keys set))
-                  ret
-                  ::s/invalid))))
-          (explain-closed* [_ path via in x]
-            (let [ret (explain* s path via in x)
-                  ks (-> key-specs keys set)]
-              (if (set/subset? ks (-> ret keys set))
-                ret
-                (into ret [{:path path :pred `(fn [%] (set/subset? ~ks (set (keys ~'%)))) :val x :via via :in in}])))))))))
+      (conform-closed* [s x]
+        (let [ret (conform* s x)]
+          (if (s/invalid? ret)
+            ::s/invalid
+            (if (set/subset? (-> key-specs keys set) (-> ret keys set))
+              ret
+              ::s/invalid))))
+      (explain-closed* [s path via in x]
+        (let [ret (explain* s path via in x)
+              ks (-> key-specs keys set)]
+          (if (set/subset? ks (-> ret keys set))
+            ret
+            (into ret [{:path path :pred `(fn [%] (set/subset? ~ks (set (keys ~'%)))) :val x :via via :in in}])))))))
 
 (defmethod s/create-spec `s/schema
   [[_s coll]]
@@ -641,7 +629,7 @@
                (if (= i cnt)
                  ret
                  (let [v (x i)
-                       cv (conform* (specs i) v)]
+                       cv (s/conform (specs i) v)]
                    (if (s/invalid? cv)
                      ::s/invalid
                      (recur (if (identical? cv v) ret (assoc ret i cv))
@@ -701,20 +689,20 @@
         cform (case (count forms)
                 2 (fn [x]
                     (let [specs @specs
-                          ret (conform* (specs 0) x)]
+                          ret (s/conform (specs 0) x)]
                       (if (s/invalid? ret)
-                        (let [ret (conform* (specs 1) x)]
+                        (let [ret (s/conform (specs 1) x)]
                           (if (s/invalid? ret)
                             ::s/invalid
                             (tagged-ret (keys 1) ret)))
                         (tagged-ret (keys 0) ret))))
                 3 (fn [x]
                     (let [specs @specs
-                          ret (conform* (specs 0) x)]
+                          ret (s/conform (specs 0) x)]
                       (if (s/invalid? ret)
-                        (let [ret (conform* (specs 1) x)]
+                        (let [ret (s/conform (specs 1) x)]
                           (if (s/invalid? ret)
-                            (let [ret (conform* (specs 2) x)]
+                            (let [ret (s/conform (specs 2) x)]
                               (if (s/invalid? ret)
                                 ::s/invalid
                                 (tagged-ret (keys 2) ret)))
@@ -725,7 +713,7 @@
                     (loop [i 0]
                       (if (< i (count specs))
                         (let [spec (specs i)]
-                          (let [ret (conform* spec x)]
+                          (let [ret (s/conform spec x)]
                             (if (s/invalid? ret)
                               (recur (inc i))
                               (tagged-ret (keys i) ret))))
@@ -767,24 +755,24 @@
         (case (count forms)
           2 (fn [x]
               (let [specs @specs
-                    ret (conform* (specs 0) x)]
+                    ret (s/conform (specs 0) x)]
                 (if (s/invalid? ret)
                   ::s/invalid
-                  (conform* (specs 1) ret))))
+                  (s/conform (specs 1) ret))))
           3 (fn [x]
               (let [specs @specs
-                    ret (conform* (specs 0) x)]
+                    ret (s/conform (specs 0) x)]
                 (if (s/invalid? ret)
                   ::s/invalid
-                  (let [ret (conform* (specs 1) ret)]
+                  (let [ret (s/conform (specs 1) ret)]
                     (if (s/invalid? ret)
                       ::s/invalid
-                      (conform* (specs 2) ret))))))
+                      (s/conform (specs 2) ret))))))
           (fn [x]
             (let [specs @specs]
               (loop [ret x i 0]
                 (if (< i (count specs))
-                  (let [nret (conform* (specs i) ret)]
+                  (let [nret (s/conform (specs i) ret)]
                     (if (s/invalid? nret)
                       ::s/invalid
                       ;;propagate conformed values
@@ -902,7 +890,7 @@
              (let [[init add complete] (cfns x)]
                (loop [ret (init x), i 0, [v & vs :as vseq] (seq x)]
                  (if vseq
-                   (let [cv (conform* spec v)]
+                   (let [cv (s/conform spec v)]
                      (if (s/invalid? cv)
                        ::s/invalid
                        (recur (add ret i v cv) (inc i) vs)))
@@ -1474,7 +1462,7 @@
    (let [spec (delay (s/spec* spec))]
      (reify
        Spec
-       (conform* [_ x] (let [ret (conform* @spec x)]
+       (conform* [_ x] (let [ret (s/conform @spec x)]
                          (if (s/invalid? ret)
                            ::s/invalid
                            x)))
@@ -1494,7 +1482,7 @@
   (let [spec (delay (s/spec* form))]
     (reify
       Spec
-      (conform* [_ x] (if (nil? x) nil (conform* @spec x)))
+      (conform* [_ x] (if (nil? x) nil (s/conform @spec x)))
       (unform* [_ x] (if (nil? x) nil (unform* @spec x)))
       (explain* [_ path via in x]
         (when-not (or (pvalid? @spec x) (nil? x))
