@@ -553,6 +553,7 @@
 
 (defmethod s/create-spec `s/select
   [[_ schema selection]]
+  (assert (vector? selection))
   (select-impl schema selection nil))
 
 (defn- nest-impl
