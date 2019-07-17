@@ -129,7 +129,7 @@
 
 (defmethod s/create-spec 'clojure.spec-alpha2/&
   [[_ re & preds]]
-  (amp-impl (s/spec* re) re (mapv eval preds) (mapv #'s/unfn preds)))
+  (amp-impl (s/spec* re) re (mapv s/spec* preds) (mapv #'s/unfn preds)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- recur-limit? [rmap id path k]
