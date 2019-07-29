@@ -13,9 +13,7 @@
     [clojure.spec-alpha2.protocols :as protocols
      :refer [Spec conform* unform* explain* gen* with-gen* describe*
              Schema keyspecs*
-             Select
-             Closable close*
-             Closed open* conform-closed* explain-closed*]]
+             Select]]
     [clojure.spec-alpha2.gen :as gen]
     [clojure.set :as set]
     [clojure.walk :as walk]))
@@ -45,9 +43,10 @@
   (let [pred (eval form)]
     (reify
       Spec
-      (conform* [_ x] (if (pred x) x ::s/invalid))
+      (conform* [_ x settings-key settings]
+        (if (pred x) x ::s/invalid))
       (unform* [_ x] x)
-      (explain* [_ path via in x]
+      (explain* [_ path via in x settings-key settings]
         (when-not (pred x)
           [{:path path :pred (#'s/unfn form) :val x :via via :in in}]))
       (gen* [_ _ _ _] (if gfn
@@ -82,11 +81,11 @@
         unf (when unf-form (eval unf-form))]
     (reify
       protocols/Spec
-      (conform* [_ x] (f x))
+      (conform* [_ x settings-key settings] (f x))
       (unform* [_ x] (if unf
                        (unf x)
                        (throw (IllegalStateException. "no unform fn for conformer"))))
-      (explain* [_ path via in x]
+      (explain* [_ path via in x settings-key settings]
         (when (s/invalid? (f x))
           [{:path path :pred `(s/conformer ~f-form ~@(if unf-form (vector unf-form) nil)) :val x :via via :in in}]))
       (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred f)))
@@ -129,7 +128,7 @@
 
 (defmethod s/create-spec 'clojure.spec-alpha2/&
   [[_ re & preds]]
-  (amp-impl (s/spec* re) re (mapv eval preds) (mapv #'s/unfn preds)))
+  (amp-impl (s/spec* re) re (mapv s/spec* preds) (mapv #'s/unfn preds)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- recur-limit? [rmap id path k]
@@ -159,22 +158,22 @@
   ([pred x form]
    (not (s/invalid? (dt pred x form)))))
 
-(defn- explain-1 [form pred path via in v]
+(defn- explain-1 [form pred path via in v settings-key settings]
   ;;(prn {:form form :pred pred :path path :in in :v v})
   (let [pred (maybe-spec pred)]
     (if (s/spec? pred)
-      (explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v)
+      (explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v settings-key settings)
       [{:path path :pred form :val v :via via :in in}])))
 
 (defn- explain-pred-list
-  [forms preds path via in x]
+  [forms preds path via in x settings-key settings]
   (loop [ret x
          [form & forms] forms
          [pred & preds] preds]
     (when pred
       (let [nret (dt pred ret form)]
         (if (s/invalid? nret)
-          (explain-1 form pred path via in ret)
+          (explain-1 form pred path via in ret settings-key settings)
           (recur nret forms preds))))))
 
 (declare or-k-gen and-k-gen)
@@ -214,14 +213,14 @@
         id (java.util.UUID/randomUUID)]
     (reify
       Spec
-      (conform* [_ m]
+      (conform* [_ m settings-key settings]
         (if (keys-pred m)
           (let [reg (s/registry)]
             (loop [ret m, [[k v] & ks :as keys] m]
               (if keys
                 (let [sname (keys->specnames k)]
                   (if-let [s (get reg sname)]
-                    (let [cv (s/conform s v)]
+                    (let [cv (conform* s v k settings)]
                       (if (s/invalid? cv)
                         ::s/invalid
                         (recur (if (identical? cv v) ret (assoc ret k cv))
@@ -240,7 +239,7 @@
                          ks))
                 (recur ret ks))
               ret))))
-      (explain* [_ path via in x]
+      (explain* [_ path via in x settings-key settings]
         (if-not (map? x)
           [{:path path :pred `map? :val x :via via :in in}]
           (let [reg (s/registry)]
@@ -255,7 +254,7 @@
                    (map (fn [[k v]]
                           (when-not (or (not (contains? reg (keys->specnames k)))
                                           (pvalid? (keys->specnames k) v k))
-                            (explain-1 (keys->specnames k) (keys->specnames k) (conj path k) via (conj in k) v)))
+                            (explain-1 (keys->specnames k) (keys->specnames k) (conj path k) via (conj in k) v k settings)))
                         (seq x))))))
       (gen* [_ overrides path rmap]
         (if gfn
@@ -348,13 +347,13 @@
     (assert (every? #(not (select? %)) unq-specs))
     (reify
       Spec
-      (conform* [_ x]
+      (conform* [_ x settings-key settings]
         (if (not (map? x))
           ::s/invalid
           (loop [ret x ;; either conformed map or ::s/invalid
                  [[k v] & ks :as m] x]
             (if k
-              (let [conformed (if-let [sp (lookup k)] (s/conform sp v) v)]
+              (let [conformed (if-let [sp (lookup k)] (conform* sp v k settings) v)]
                 (if (s/invalid? conformed)
                   (recur ::s/invalid nil)
                   (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)))
@@ -367,13 +366,13 @@
               (let [uv (s/unform sp v)]
                 (recur (if (identical? uv v) ret (assoc ret k uv)) ks))
               (recur ret ks)))))
-      (explain* [_ path via in x]
+      (explain* [_ path via in x settings-key settings]
         (if (not (map? x))
           [{:path path :pred `map? :val x :via via :in in}]
           (reduce-kv
             (fn [p k v]
               (if-let [sp (lookup k)]
-                (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v))
+                (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
                 p))
             [] x)))
       (gen* [_ overrides path rmap]
@@ -397,33 +396,32 @@
       (describe* [_] `(s/schema ~coll))
 
       Schema
-      (keyspecs* [_] key-specs)
+      (keyspecs* [_] key-specs))))
 
-      Closable
-      (close* [s]
-        (reify
-          Spec
-          (conform* [sp x] (conform-closed* sp x))
-          (explain* [sp path via in x] (explain-closed* sp path via in x))
-          (gen* [_ overrides path rmap] (gen* s overrides path rmap))
-          (with-gen* [_ gfn] (close* (with-gen* s gfn)))
-          (describe* [_] (describe* s))
-
-          Closed
-          (open* [_] s)
-          (conform-closed* [_ x]
-            (let [ret (conform* s x)]
-              (if (s/invalid? ret)
-                ::s/invalid
-                (if (set/subset? (-> key-specs keys set) (-> ret keys set))
-                  ret
-                  ::s/invalid))))
-          (explain-closed* [_ path via in x]
-            (let [ret (explain* s path via in x)
-                  ks (-> key-specs keys set)]
-              (if (set/subset? ks (-> ret keys set))
-                ret
-                (into ret [{:path path :pred `(fn [%] (set/subset? ~ks (set (keys ~'%)))) :val x :via via :in in}])))))))))
+;; (close* [s]
+;        (reify
+;          Spec
+;          (conform* [sp x] (conform-closed* sp x))
+;          (explain* [sp path via in x settings-key settings] (explain-closed* sp path via in x))
+;          (gen* [_ overrides path rmap] (gen* s overrides path rmap))
+;          (with-gen* [_ gfn] (close* (with-gen* s gfn)))
+;          (describe* [_] (describe* s))
+;
+;          Closed
+;          (open* [_] s)
+;          (conform-closed* [_ x]
+;            (let [ret (conform* s x)]
+;              (if (s/invalid? ret)
+;                ::s/invalid
+;                (if (set/subset? (-> key-specs keys set) (-> ret keys set))
+;                  ret
+;                  ::s/invalid))))
+;          (explain-closed* [_ path via in x settings-key settings]
+;            (let [ret (explain* s path via in x settings-key settings)
+;                  ks (-> key-specs keys set)]
+;              (if (set/subset? ks (-> ret keys set))
+;                ret
+;                (into ret [{:path path :pred `(fn [%] (set/subset? ~ks (set (keys ~'%)))) :val x :via via :in in}]))))))
 
 (defmethod s/create-spec `s/schema
   [[_s coll]]
@@ -441,9 +439,9 @@
         impl (schema-impl (if (seq ukv) (conj qk ukv) qk) nil)]
     (reify
       Spec
-      (conform* [_ x] (conform* impl x))
+      (conform* [_ x settings-key settings] (conform* impl x settings-key settings))
       (unform* [_ x] (unform* impl x))
-      (explain* [_ path via in x] (explain* impl path via in x))
+      (explain* [_ path via in x settings-key settings] (explain* impl path via in x settings-key settings))
       (gen* [_ overrides path rmap] (gen* impl overrides path rmap))
       (with-gen* [_ gfn] (union-impl schemas gfn))
       (describe* [_] `(s/union ~@schemas)))))
@@ -475,7 +473,7 @@
     (reify
       Select
       Spec
-      (conform* [_ x]
+      (conform* [_ x settings-key settings]
         (if (or (not (map? x))
                 (not (set/subset? req-kset (-> x keys set))))
           ::s/invalid
@@ -483,7 +481,7 @@
                  [[k v] & ks :as m] x]
             (if k
               (let [conformed (if-let [sp (lookup k)]
-                                (s/conform sp v)
+                                (conform* sp v k settings)
                                 v)]
                 (if (s/invalid? conformed)
                   (recur ::s/invalid nil)
@@ -501,7 +499,7 @@
               (let [uv (s/unform sp v)]
                 (recur (if (identical? uv v) ret (assoc ret k uv)) ks))
               (recur ret ks)))))
-      (explain* [_ path via in x]
+      (explain* [_ path via in x settings-key settings]
         (if (not (map? x))
           [{:path path :pred `map? :val x :via via :in in}]
           (-> (concat
@@ -515,7 +513,7 @@
                      (keep
                        (fn [[k v]]
                          (when-let [sp (lookup k)]
-                           (explain-1 (s/form sp) sp (conj path k) via (conj in k) v))))
+                           (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))))
                      (mapcat identity))
                 ;; nested select matches
                 (->> sub-selects
@@ -523,7 +521,7 @@
                        (fn [[k _]]
                          (when (contains? x k)
                            (when-let [sp (lookup k)]
-                             (explain-1 (s/form sp) sp (conj path k) via (conj in k) (get x k))))))
+                             (explain-1 (s/form sp) sp (conj path k) via (conj in k) (get x k) k settings)))))
                      (mapcat identity)))
               distinct
               vec)))
@@ -561,9 +559,9 @@
   (let [spec (delay (s/spec* re-form))]
     (reify
       Spec
-      (conform* [_ x] (conform* @spec x))
+      (conform* [_ x settings-key settings] (conform* @spec x settings-key settings))
       (unform* [_ x] (unform* @spec x))
-      (explain* [_ path via in x] (explain* @spec path via in x))
+      (explain* [_ path via in x settings-key settings] (explain* @spec path via in x settings-key settings))
       (gen* [_ overrides path rmap]
         (if gfn
           (gfn)
@@ -589,17 +587,18 @@
                retag)]
      (reify
        Spec
-       (conform* [_ x] (if-let [pred (predx x)]
-                         (dt pred x form)
-                         ::s/invalid))
+       (conform* [_ x settings-key settings]
+         (if-let [pred (predx x)]
+           (dt pred x form)
+           ::s/invalid))
        (unform* [_ x] (if-let [pred (predx x)]
                         (s/unform pred x)
                         (throw (IllegalStateException. (str "No method of: " form " for dispatch value: " (dval x))))))
-       (explain* [_ path via in x]
+       (explain* [_ path via in x settings-key settings]
          (let [dv (dval x)
                path (conj path dv)]
            (if-let [pred (predx x)]
-             (explain-1 form pred path via in x)
+             (explain-1 form pred path via in x settings-key settings)
              [{:path path :pred form :val x :reason "no method" :via via :in in}])))
        (gen* [_ overrides path rmap]
          (if gfn
@@ -633,7 +632,7 @@
          cnt (count forms)]
      (reify
        Spec
-       (conform* [_ x]
+       (conform* [_ x settings-key settings]
          (let [specs @specs]
            (if-not (and (vector? x)
                           (= (count x) cnt))
@@ -642,7 +641,7 @@
                (if (= i cnt)
                  ret
                  (let [v (x i)
-                       cv (conform* (specs i) v)]
+                       cv (conform* (specs i) v settings-key settings)]
                    (if (s/invalid? cv)
                      ::s/invalid
                      (recur (if (identical? cv v) ret (assoc ret i cv))
@@ -657,7 +656,7 @@
                    v (s/unform (@specs i) cv)]
                (recur (if (identical? cv v) ret (assoc ret i v))
                       (inc i))))))
-       (explain* [_ path via in x]
+       (explain* [_ path via in x settings-key settings]
          (cond
            (not (vector? x))
            [{:path path :pred `vector? :val x :via via :in in}]
@@ -670,7 +669,7 @@
                   (map (fn [i form pred]
                          (let [v (x i)]
                            (when-not (pvalid? pred v)
-                             (explain-1 form pred (conj path i) via (conj in i) v))))
+                             (explain-1 form pred (conj path i) via (conj in i) v settings-key settings))))
                        (range (count forms)) forms @specs))))
        (gen* [_ overrides path rmap]
          (if gfn
@@ -700,47 +699,47 @@
         specs (delay (mapv s/spec* forms))
         kps (zipmap keys @specs)
         cform (case (count forms)
-                2 (fn [x]
+                2 (fn [x settings-key settings]
                     (let [specs @specs
-                          ret (conform* (specs 0) x)]
+                          ret (conform* (specs 0) x settings-key settings)]
                       (if (s/invalid? ret)
-                        (let [ret (conform* (specs 1) x)]
+                        (let [ret (conform* (specs 1) x settings-key settings)]
                           (if (s/invalid? ret)
                             ::s/invalid
                             (tagged-ret (keys 1) ret)))
                         (tagged-ret (keys 0) ret))))
-                3 (fn [x]
+                3 (fn [x settings-key settings]
                     (let [specs @specs
-                          ret (conform* (specs 0) x)]
+                          ret (conform* (specs 0) x settings-key settings)]
                       (if (s/invalid? ret)
-                        (let [ret (conform* (specs 1) x)]
+                        (let [ret (conform* (specs 1) x settings-key settings)]
                           (if (s/invalid? ret)
-                            (let [ret (conform* (specs 2) x)]
+                            (let [ret (conform* (specs 2) x settings-key settings)]
                               (if (s/invalid? ret)
                                 ::s/invalid
                                 (tagged-ret (keys 2) ret)))
                             (tagged-ret (keys 1) ret)))
                         (tagged-ret (keys 0) ret))))
-                (fn [x]
+                (fn [x settings-key settings]
                   (let [specs @specs]
                     (loop [i 0]
                       (if (< i (count specs))
                         (let [spec (specs i)]
-                          (let [ret (conform* spec x)]
+                          (let [ret (conform* spec x settings-key settings)]
                             (if (s/invalid? ret)
                               (recur (inc i))
                               (tagged-ret (keys i) ret))))
                         ::s/invalid)))))]
     (reify
       Spec
-      (conform* [_ x] (cform x))
+      (conform* [_ x settings-key settings] (cform x settings-key settings))
       (unform* [_ [k x]] (s/unform (kps k) x))
-      (explain* [this path via in x]
+      (explain* [this path via in x settings-key settings]
         (when-not (pvalid? this x)
           (apply concat
                  (map (fn [k form pred]
                         (when-not (pvalid? pred x)
-                          (explain-1 form pred (conj path k) via in x)))
+                          (explain-1 form pred (conj path k) via in x settings-key settings)))
                       keys forms @specs))))
       (gen* [_ overrides path rmap]
         (if gfn
@@ -766,26 +765,26 @@
   (let [specs (delay (mapv s/spec* forms))
         cform
         (case (count forms)
-          2 (fn [x]
+          2 (fn [x settings-key settings]
               (let [specs @specs
-                    ret (conform* (specs 0) x)]
+                    ret (conform* (specs 0) x settings-key settings)]
                 (if (s/invalid? ret)
                   ::s/invalid
-                  (conform* (specs 1) ret))))
-          3 (fn [x]
+                  (conform* (specs 1) ret settings-key settings))))
+          3 (fn [x settings-key settings]
               (let [specs @specs
-                    ret (conform* (specs 0) x)]
+                    ret (conform* (specs 0) x settings-key settings)]
                 (if (s/invalid? ret)
                   ::s/invalid
-                  (let [ret (conform* (specs 1) ret)]
+                  (let [ret (conform* (specs 1) ret settings-key settings)]
                     (if (s/invalid? ret)
                       ::s/invalid
-                      (conform* (specs 2) ret))))))
-          (fn [x]
+                      (conform* (specs 2) ret settings-key settings))))))
+          (fn [x settings-key settings]
             (let [specs @specs]
               (loop [ret x i 0]
                 (if (< i (count specs))
-                  (let [nret (conform* (specs i) ret)]
+                  (let [nret (conform* (specs i) ret settings-key settings)]
                     (if (s/invalid? nret)
                       ::s/invalid
                       ;;propagate conformed values
@@ -793,9 +792,9 @@
                   ret)))))]
     (reify
       Spec
-      (conform* [_ x] (cform x))
+      (conform* [_ x settings-key settings] (cform x settings-key settings))
       (unform* [_ x] (reduce #(s/unform %2 %1) x (reverse @specs)))
-      (explain* [_ path via in x] (explain-pred-list forms @specs path via in x))
+      (explain* [_ path via in x settings-key settings] (explain-pred-list forms @specs path via in x settings-key settings))
 
       (gen* [_ overrides path rmap] (if gfn (gfn) (#'s/gensub (first @specs) overrides path rmap (first forms))))
       (with-gen* [_ gfn] (and-spec-impl forms gfn))
@@ -810,14 +809,15 @@
   [forms preds gfn]
   (reify
     Spec
-    (conform* [_ x] (let [ms (map #(dt %1 x %2) preds forms)]
-                      (if (some s/invalid? ms)
-                        ::s/invalid
-                        (apply merge ms))))
+    (conform* [_ x settings-key settings]
+      (let [ms (map #(dt %1 x %2) preds forms)]
+        (if (some s/invalid? ms)
+          ::s/invalid
+          (apply merge ms))))
     (unform* [_ x] (apply merge (map #(s/unform % x) (reverse preds))))
-    (explain* [_ path via in x]
+    (explain* [_ path via in x settings-key settings]
       (apply concat
-             (map #(explain-1 %1 %2 path via in x)
+             (map #(explain-1 %1 %2 path via in x settings-key settings)
                   forms preds)))
     (gen* [_ overrides path rmap]
       (if gfn
@@ -834,12 +834,12 @@
   (merge-spec-impl pred-forms (mapv s/spec* pred-forms) nil))
 
 (defn- coll-prob [x kfn kform distinct count min-count max-count
-                  path via in]
+                  path via in settings-key settings]
   (let [pred (or kfn coll?)
         kform (or kform `coll?)]
     (cond
       (not (pvalid? pred x))
-      (explain-1 kform pred path via in x)
+      (explain-1 kform pred path via in x settings-key settings)
 
       (and count (not= count (bounded-count count x)))
       [{:path path :pred `(= ~count (count ~'%)) :val x :via via :in in}]
@@ -895,7 +895,7 @@
                   :else [#(empty (or conform-into %)) addcv identity]))]
      (reify
        Spec
-       (conform* [_ x]
+       (conform* [_ x settings-key settings]
          (let [spec @spec]
            (cond
              (not (cpred x)) ::s/invalid
@@ -903,7 +903,7 @@
              (let [[init add complete] (cfns x)]
                (loop [ret (init x), i 0, [v & vs :as vseq] (seq x)]
                  (if vseq
-                   (let [cv (conform* spec v)]
+                   (let [cv (conform* spec v settings-key settings)]
                      (if (s/invalid? cv)
                        ::s/invalid
                        (recur (add ret i v cv) (inc i) vs)))
@@ -932,16 +932,16 @@
                  (complete ret)
                  (recur (add ret i v (s/unform spec v)) (inc i) vs))))
            x))
-       (explain* [_ path via in x]
+       (explain* [_ path via in x settings-key settings]
          (or (coll-prob x kind kind-form distinct count min-count max-count
-                          path via in)
+                          path via in settings-key settings)
                (apply concat
                       ((if conform-all identity (partial take s/*coll-error-limit*))
                         (keep identity
                               (map (fn [i v]
                                      (let [k (kfn i v)]
                                        (when-not (check? v)
-                                         (let [prob (explain-1 form @spec path via (conj in k) v)]
+                                         (let [prob (explain-1 form @spec path via (conj in k) v settings-key settings)]
                                            prob))))
                                    (range) x))))))
        (gen* [_ overrides path rmap]
@@ -1037,15 +1037,15 @@
   ([re-obj gfn]
    (with-meta
      re-obj
-     {`protocols/conform* (fn [re x]
+     {`protocols/conform* (fn [re x settings-key settings]
                             (if (or (nil? x) (sequential? x))
                               (re-conform re (seq x))
                               ::s/invalid))
       `protocols/unform* (fn [re x]
                            (op-unform re x))
-      `protocols/explain* (fn [re path via in x]
+      `protocols/explain* (fn [re path via in x settings-key settings]
                             (if (or (nil? x) (sequential? x))
-                              (re-explain path via in re (seq x))
+                              (re-explain path via in re (seq x) settings-key settings)
                               [{:path path :pred (#'s/res `#(or (nil? %) (sequential? %))) :val x :via via :in in}]))
       `protocols/gen* (fn [re overrides path rmap]
                         (if gfn
@@ -1251,7 +1251,7 @@
                 (cons `s/alt (mapcat vector ks forms)))
         ::s/rep (list (if splice `s/+ `s/*) forms)))))
 
-(defn- op-explain [form p path via in input]
+(defn- op-explain [form p path via in input settings-key settings]
   ;;(prn {:form form :p p :path path :input input})
   (let [[x :as input] input
         {:keys [::s/op ps ks forms splice p1 p2] :as p} (#'s/reg-resolve! p)
@@ -1268,14 +1268,14 @@
         ::s/accept nil
         nil (if (empty? input)
               (insufficient path form)
-              (explain-1 form p path via in x))
+              (explain-1 form p path via in x settings-key settings))
         ::s/amp (if (empty? input)
                 (if (accept-nil? p1)
-                  (explain-pred-list forms ps path via in (preturn p1))
+                  (explain-pred-list forms ps path via in (preturn p1) settings-key settings)
                   (insufficient path (:amp p)))
                 (if-let [p1 (deriv p1 x)]
-                  (explain-pred-list forms ps path via in (preturn p1))
-                  (op-explain (:amp p) p1 path via in input)))
+                  (explain-pred-list forms ps path via in (preturn p1) settings-key settings)
+                  (op-explain (:amp p) p1 path via in input settings-key settings)))
         ::s/pcat (let [pkfs (map vector
                                ps
                                (or (seq ks) (repeat nil))
@@ -1287,7 +1287,7 @@
                      form (or form (op-describe pred))]
                  (if (and (empty? input) (not pred))
                    (insufficient path form)
-                   (op-explain form pred path via in input)))
+                   (op-explain form pred path via in input settings-key settings)))
         ::s/alt (if (empty? input)
                 (insufficient path (op-describe p))
                 (apply concat
@@ -1297,14 +1297,17 @@
                                           (if k (conj path k) path)
                                           via
                                           in
-                                          input))
+                                          input
+                                          settings-key
+                                          settings))
                             (or (seq ks) (repeat nil))
                             (or (seq forms) (repeat nil))
                             ps)))
         ::s/rep (op-explain (if (identical? p1 p2)
                             forms
                             (op-describe p1))
-                          p1 path via in input)))))
+                          p1 path via in input
+                          settings-key settings)))))
 
 (defn- re-gen [p overrides path rmap f]
   ;;(prn {:op op :ks ks :forms forms})
@@ -1360,25 +1363,25 @@
       (recur dp xs)
       ::s/invalid)))
 
-(defn- re-explain [path via in re input]
+(defn- re-explain [path via in re input settings-key settings]
   (loop [p re [x & xs :as data] input i 0]
     ;;(prn {:p p :x x :xs xs :re re}) (prn)
     (if (empty? data)
       (if (accept-nil? p)
         nil ;;success
-        (op-explain (op-describe p) p path via in nil))
+        (op-explain (op-describe p) p path via in nil settings-key settings))
       (if-let [dp (deriv p x)]
         (recur dp xs (inc i))
         (if (accept? p)
           (if (= (::s/op p) ::s/pcat)
-            (op-explain (op-describe p) p path via (conj in i) (seq data))
+            (op-explain (op-describe p) p path via (conj in i) (seq data) settings-key settings)
             [{:path path
               :reason "Extra input"
               :pred (op-describe re)
               :val data
               :via via
               :in (conj in i)}])
-          (or (op-explain (op-describe p) p path via (conj in i) (seq data))
+          (or (op-explain (op-describe p) p path via (conj in i) (seq data) settings-key settings)
                 [{:path path
                   :reason "Extra input"
                   :pred (op-describe p)
@@ -1430,13 +1433,14 @@
       (valAt [_ k not-found] (get specs k not-found))
 
       Spec
-      (conform* [this f] (if argspec
-                           (if (ifn? f)
-                             (if (identical? f (validate-fn f specs s/*fspec-iterations*)) f ::s/invalid)
-                             ::s/invalid)
-                           (throw (Exception. (str "Can't conform fspec without args spec: " (pr-str (s/describe this)))))))
+      (conform* [this f settings-key settings]
+        (if argspec
+          (if (ifn? f)
+            (if (identical? f (validate-fn f specs s/*fspec-iterations*)) f ::s/invalid)
+            ::s/invalid)
+          (throw (Exception. (str "Can't conform fspec without args spec: " (pr-str (s/describe this)))))))
       (unform* [_ f] f)
-      (explain* [_ path via in f]
+      (explain* [_ path via in f settings-key settings]
         (if (ifn? f)
           (let [args (validate-fn f specs 100)]
             (if (identical? f args) ;;hrm, we might not be able to reproduce
@@ -1448,10 +1452,10 @@
 
                   (let [cret (dt retspec ret rform)]
                     (if (s/invalid? cret)
-                      (explain-1 rform retspec (conj path :ret) via in ret)
+                      (explain-1 rform retspec (conj path :ret) via in ret settings-key settings)
                       (when fnspec
-                        (let [cargs (s/conform argspec args)]
-                          (explain-1 fform fnspec (conj path :fn) via in {:args cargs :ret cret})))))))))
+                        (let [cargs (conform* argspec args nil settings)]
+                          (explain-1 fform fnspec (conj path :fn) via in {:args cargs :ret cret} settings-key settings)))))))))
           [{:path path :pred 'ifn? :val f :via via :in in}]))
       (gen* [_ overrides _ _] (if gfn
                                 (gfn)
@@ -1475,12 +1479,14 @@
    (let [spec (delay (s/spec* spec))]
      (reify
        Spec
-       (conform* [_ x] (let [ret (conform* @spec x)]
-                         (if (s/invalid? ret)
-                           ::s/invalid
-                           x)))
+       (conform* [_ x settings-key settings]
+         (let [ret (conform* @spec x settings-key settings)]
+           (if (s/invalid? ret)
+             ::s/invalid
+             x)))
        (unform* [_ x] x)
-       (explain* [_ path via in x] (explain* @spec path via in x))
+       (explain* [_ path via in x settings-key settings]
+         (explain* @spec path via in x settings-key settings))
        (gen* [_ overrides path rmap] (gen* @spec overrides path rmap))
        (with-gen* [_ gfn] (nonconforming-impl (nonconforming-impl spec gfn)))
        (describe* [_] `(s/nonconforming ~(describe* @spec)))))))
@@ -1495,12 +1501,12 @@
   (let [spec (delay (s/spec* form))]
     (reify
       Spec
-      (conform* [_ x] (if (nil? x) nil (conform* @spec x)))
+      (conform* [_ x settings-key settings] (if (nil? x) nil (conform* @spec x settings-key settings)))
       (unform* [_ x] (if (nil? x) nil (unform* @spec x)))
-      (explain* [_ path via in x]
+      (explain* [_ path via in x settings-key settings]
         (when-not (or (pvalid? @spec x) (nil? x))
           (conj
-            (explain-1 form @spec (conj path ::s/pred) via in x)
+            (explain-1 form @spec (conj path ::s/pred) via in x nil settings)
             {:path (conj path ::s/nil) :pred 'nil? :val x :via via :in in})))
       (gen* [_ overrides path rmap]
         (if gfn
