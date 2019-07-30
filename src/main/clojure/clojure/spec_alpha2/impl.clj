@@ -348,7 +348,10 @@
     (reify
       Spec
       (conform* [_ x settings-key settings]
-        (if (not (map? x))
+        (if (or (not (map? x))
+              (and
+                (-> settings (get :closed) (contains? settings-key))
+                (not (set/subset? (-> x keys set) (set ks)))))
           ::s/invalid
           (loop [ret x ;; either conformed map or ::s/invalid
                  [[k v] & ks :as m] x]
@@ -369,12 +372,16 @@
       (explain* [_ path via in x settings-key settings]
         (if (not (map? x))
           [{:path path :pred `map? :val x :via via :in in}]
-          (reduce-kv
-            (fn [p k v]
-              (if-let [sp (lookup k)]
-                (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
-                p))
-            [] x)))
+          (if (and (-> settings (get :closed) (contains? settings-key))
+                (not (set/subset? (-> x keys set) (set ks))))
+            (let [form `(fn [~'%] (set/subset? (set (keys ~'%)) ~(set ks)))]
+              [{:path path :pred form :val x :via via :in in}])
+            (reduce-kv
+              (fn [p k v]
+                (if-let [sp (lookup k)]
+                  (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
+                  p))
+              [] x))))
       (gen* [_ overrides path rmap]
         (if gfn
           (gfn)
@@ -397,31 +404,6 @@
 
       Schema
       (keyspecs* [_] key-specs))))
-
-;; (close* [s]
-;        (reify
-;          Spec
-;          (conform* [sp x] (conform-closed* sp x))
-;          (explain* [sp path via in x settings-key settings] (explain-closed* sp path via in x))
-;          (gen* [_ overrides path rmap] (gen* s overrides path rmap))
-;          (with-gen* [_ gfn] (close* (with-gen* s gfn)))
-;          (describe* [_] (describe* s))
-;
-;          Closed
-;          (open* [_] s)
-;          (conform-closed* [_ x]
-;            (let [ret (conform* s x)]
-;              (if (s/invalid? ret)
-;                ::s/invalid
-;                (if (set/subset? (-> key-specs keys set) (-> ret keys set))
-;                  ret
-;                  ::s/invalid))))
-;          (explain-closed* [_ path via in x settings-key settings]
-;            (let [ret (explain* s path via in x settings-key settings)
-;                  ks (-> key-specs keys set)]
-;              (if (set/subset? ks (-> ret keys set))
-;                ret
-;                (into ret [{:path path :pred `(fn [%] (set/subset? ~ks (set (keys ~'%)))) :val x :via via :in in}]))))))
 
 (defmethod s/create-spec `s/schema
   [[_s coll]]

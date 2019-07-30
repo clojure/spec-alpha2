@@ -211,13 +211,13 @@
     :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
 
 (defn conform
-  "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
+  "Given a spec and a value, returns :clojure.spec-alpha2/invalid
 	if value does not match spec, else the (possibly destructured) value."
   ([spec x]
     (conform spec x nil))
   ([spec x settings]
    (if (keyword? spec)
-     (conform* (reg-resolve! spec) x x settings)
+     (conform* (reg-resolve! spec) x spec settings)
      (conform* spec x nil settings))))
 
 (defn unform
@@ -270,8 +270,11 @@
   a collection of problem-maps, where problem-map has at least :path :pred and :val
   keys describing the predicate and the value that failed at that
   path."
-  [spec x]
-  (explain-data* spec [] (if-let [name (spec-name spec)] [name] []) [] x nil nil))
+  ([spec x]
+   (explain-data spec x nil))
+  ([spec x settings]
+   (let [settings-key (when (keyword? spec) spec)]
+     (explain-data* spec [] (if-let [name (spec-name spec)] [name] []) [] x settings-key settings))))
 
 (defn explain-printer
   "Default printer for explain-data. nil indicates a successful validation."
@@ -308,13 +311,17 @@
 
 (defn explain
   "Given a spec and a value that fails to conform, prints an explanation to *out*."
-  [spec x]
-  (explain-out (explain-data spec x)))
+  ([spec x]
+   (explain spec x nil))
+  ([spec x settings]
+   (explain-out (explain-data spec x settings))))
 
 (defn explain-str
   "Given a spec and a value that fails to conform, returns an explanation as a string."
-  [spec x]
-  (with-out-str (explain spec x)))
+  ([spec x]
+   (explain-str spec x nil))
+  ([spec x settings]
+   (with-out-str (explain spec x settings))))
 
 (defn valid?
   "Helper function that returns true when x is valid for spec."
