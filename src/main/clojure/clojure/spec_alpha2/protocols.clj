@@ -10,9 +10,9 @@
 
 (defprotocol Spec
   :extend-via-metadata true
-  (conform* [spec x])
+  (conform* [spec x settings-key settings])
   (unform* [spec y])
-  (explain* [spec path via in x])
+  (explain* [spec path via in x settings-key settings])
   (gen* [spec overrides path rmap])
   (with-gen* [spec gfn])
   (describe* [spec]))
@@ -22,14 +22,4 @@
 
 (defprotocol Select
   "Marker protocol for selects")
-
-(defprotocol Closable
-  "A spec that can conform with closed semantics"
-  (close* [spec] "Returns a Closed version of this spec"))
-
-(defprotocol Closed
-  "Protocol for specs that conform with closed semantics"
-  (conform-closed* [spec x])
-  (explain-closed* [spec path via in x])
-  (open* [spec]))
 

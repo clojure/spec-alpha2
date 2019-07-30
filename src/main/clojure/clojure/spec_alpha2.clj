@@ -9,7 +9,7 @@
 (ns clojure.spec-alpha2
   (:refer-clojure :exclude [+ * and assert or cat def keys merge])
   (:require [clojure.spec-alpha2.protocols :as protocols
-             :refer [conform* unform* explain* gen* with-gen* describe* close* open*]]
+             :refer [conform* unform* explain* gen* with-gen* describe*]]
             [clojure.walk :as walk]
             [clojure.spec-alpha2.gen :as gen])
   (:import [clojure.spec_alpha2.protocols Spec Schema]))
@@ -140,9 +140,10 @@
    (let [pred (deref (find-var sym))]
      (reify
        protocols/Spec
-       (conform* [_ x] (let [ret (pred x)] (if ret x ::invalid)))
+       (conform* [_ x settings-key settings]
+         (let [ret (pred x)] (if ret x ::invalid)))
        (unform* [_ x] x)
-       (explain* [_ path via in x]
+       (explain* [_ path via in x settings-key settings]
          (when (not (pred x))
            [{:path path :pred sym :val x :via via :in in}]))
        (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred pred)))
@@ -169,9 +170,10 @@
    (let [pred #(contains? set-vals %)]
      (reify
        protocols/Spec
-       (conform* [_ x] (let [ret (pred x)] (if ret x ::invalid)))
+       (conform* [_ x settings-key settings]
+         (let [ret (pred x)] (if ret x ::invalid)))
        (unform* [_ x] x)
-       (explain* [_ path via in x]
+       (explain* [_ path via in x settings-key settings]
          (when (not (pred x))
            [{:path path :pred set-vals :val x :via via :in in}]))
        (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred set-vals)))
@@ -209,10 +211,14 @@
     :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
 
 (defn conform
-  "Given a spec and a value, returns :clojure.spec-alpha2/invalid 
+  "Given a spec and a value, returns :clojure.spec-alpha2/invalid
 	if value does not match spec, else the (possibly destructured) value."
-  [spec x]
-  (conform* (specize spec) x))
+  ([spec x]
+    (conform spec x nil))
+  ([spec x settings]
+   (if (keyword? spec)
+     (conform* (reg-resolve! spec) x spec settings)
+     (conform* spec x nil settings))))
 
 (defn unform
   "Given a spec and a value created by or compliant with a call to
@@ -251,8 +257,8 @@
   [spec]
   (abbrev (form spec)))
 
-(defn explain-data* [spec path via in x]
-  (let [probs (explain* (specize spec) path via in x)]
+(defn explain-data* [spec path via in x settings-key settings]
+  (let [probs (explain* (specize spec) path via in x settings-key settings)]
     (when-not (empty? probs)
       {::sa/problems probs
        ::sa/spec spec
@@ -264,8 +270,11 @@
   a collection of problem-maps, where problem-map has at least :path :pred and :val
   keys describing the predicate and the value that failed at that
   path."
-  [spec x]
-  (explain-data* spec [] (if-let [name (spec-name spec)] [name] []) [] x))
+  ([spec x]
+   (explain-data spec x nil))
+  ([spec x settings]
+   (let [settings-key (when (keyword? spec) spec)]
+     (explain-data* spec [] (if-let [name (spec-name spec)] [name] []) [] x settings-key settings))))
 
 (defn explain-printer
   "Default printer for explain-data. nil indicates a successful validation."
@@ -302,19 +311,27 @@
 
 (defn explain
   "Given a spec and a value that fails to conform, prints an explanation to *out*."
-  [spec x]
-  (explain-out (explain-data spec x)))
+  ([spec x]
+   (explain spec x nil))
+  ([spec x settings]
+   (explain-out (explain-data spec x settings))))
 
 (defn explain-str
   "Given a spec and a value that fails to conform, returns an explanation as a string."
-  [spec x]
-  (with-out-str (explain spec x)))
+  ([spec x]
+   (explain-str spec x nil))
+  ([spec x settings]
+   (with-out-str (explain spec x settings))))
 
 (defn valid?
   "Helper function that returns true when x is valid for spec."
-  [spec x]
-  (let [spec (specize spec)]
-    (not (invalid? (conform* spec x)))))
+  ([spec x]
+    (valid? spec x nil))
+  ([spec x settings]
+   (if (keyword? spec)
+     (let [spec' (reg-resolve! spec)]
+       (not (invalid? (conform* spec' x spec settings))))
+     (not (invalid? (conform* spec x nil settings))))))
 
 (defn- gensub
   [spec overrides path rmap form]
@@ -417,22 +434,6 @@
   "Takes a spec and a no-arg, generator-returning fn and returns a version of that spec that uses that generator"
   [spec gen-fn]
   `(spec* '~(explicate (ns-name *ns*) `(with-gen ~spec ~gen-fn))))
-
-(defn close-specs
-  "Given namespace-qualified keywords, switches those specs to closed mode checking."
-  [& ks]
-  (doseq [k (if (seq ks) ks (c/keys (registry)))]
-    (let [s (get-spec k)]
-      (if (c/and s (satisfies? protocols/Closable s))
-        (register k (close* s))))))
-
-(defn open-specs
-  "Given namespace-qualified keywords, switches those specs to open mode checking."
-  [& ks]
-  (doseq [k (if (seq ks) ks (c/keys (registry)))]
-    (let [s (get-spec k)]
-      (if (c/and s (satisfies? protocols/Closed s))
-        (register k (open* s))))))
 
 (defmacro merge
   "Takes map-validating specs (e.g. 'keys' specs) and
@@ -593,7 +594,7 @@
     (when-let [arg-spec (:args fn-spec)]
       (when (invalid? (conform arg-spec args))
         (let [ed (assoc (explain-data* arg-spec []
-                                       (if-let [name (spec-name arg-spec)] [name] []) [] args)
+                                       (if-let [name (spec-name arg-spec)] [name] []) [] args nil nil)
                    ::sa/args args)]
           (throw (ex-info
                    (str "Call to " (symbol v) " did not conform to spec.")
@@ -832,7 +833,7 @@ system property. Defaults to false."
   [spec x]
   (if (valid? spec x)
     x
-    (let [ed (c/merge (assoc (explain-data* spec [] [] [] x)
+    (let [ed (c/merge (assoc (explain-data* spec [] [] [] x nil nil)
                         ::sa/failure :assertion-failed))]
       (throw (ex-info
               (str "Spec assertion failed\n" (with-out-str (explain-out ed)))
@@ -874,9 +875,10 @@ set. You can toggle check-asserts? with (check-asserts bool)."
   [sp form gfn]
   (reify
     protocols/Spec
-    (conform* [_ x] (conform @sp x))
+    (conform* [_ x settings-key settings] (protocols/conform* @sp x settings-key settings))
     (unform* [_ x] (unform @sp x))
-    (explain* [_ path via in x] (protocols/explain* @sp path via in x))
+    (explain* [_ path via in x settings-key settings]
+      (protocols/explain* @sp path via in x settings-key settings))
     (gen* [_ _ _ _] (if gfn (gfn) (gen @sp)))
     (with-gen* [_ gfn] (op-spec sp form gfn))
     (describe* [_] form)))
