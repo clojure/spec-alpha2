@@ -470,7 +470,23 @@
 ;  (is (= [[:k :a] [:i 10] [:i 100] [:k :b]]
 ;         (s/conform :fwd/a [:a 10 100 :b]))))
 
+(deftest closed-spec-checking
+  ;; open schema means extra keys are ok
+  (is (= {::mk1 100 ::k1 100} (s/conform ::sch {::mk1 100 ::k1 100})))
 
+  ;; but closed check won't allow it
+  (is (s/invalid? (s/conform ::sch {::mk1 100 ::k1 100} {:closed #{::sch}})))
+
+  ;; explain data on closed check
+  (is (submap?
+        {::sa/problems [{:path []
+                         :pred '(clojure.core/fn [%] (clojure.set/subset? (clojure.core/set (clojure.core/keys %)) #{::mk1 ::mk2 ::mk3}))
+                         :val {::mk1 100 ::k1 100}
+                         :via [::sch]
+                         :in []}]
+         ::sa/spec ::sch
+         ::sa/value {::mk1 100, ::k1 100}}
+        (s/explain-data ::sch {::mk1 100 ::k1 100} {:closed #{::sch}}))))
 
 (comment
   (require '[clojure.test :refer (run-tests)])
