@@ -472,9 +472,11 @@
 
 (deftest closed-spec-checking
   ;; open schema means extra keys are ok
+  (is (true? (s/valid? ::sch {::mk1 100 ::k1 100})))
   (is (= {::mk1 100 ::k1 100} (s/conform ::sch {::mk1 100 ::k1 100})))
 
   ;; but closed check won't allow it
+  (is (false? (s/valid? ::sch {::mk1 100 ::k1 100} {:closed #{::sch}})))
   (is (s/invalid? (s/conform ::sch {::mk1 100 ::k1 100} {:closed #{::sch}})))
 
   ;; explain data on closed check
