@@ -275,10 +275,16 @@ Returns a collection of syms naming the vars unstrumented."
   (ex-info
    "Specification-based check failed"
    (when-not (s/valid? spec v)
-     (assoc (s/explain-data* spec [role] [] [] v)
-       ::args args
-       ::val v
-       ::sa/failure :check-failed))))
+     (let [ed (s/explain-data* spec [role] [] [] v)]
+       (if (nil? ed)
+         {::args args
+          ::val v
+          ::spec (s/form spec)
+          ::sa/failure :spec-explain-mismatch}
+         (assoc ed
+           ::args args
+           ::val v
+           ::sa/failure :check-failed))))))
 
 (defn- check-call
   "Returns true if call passes specs, otherwise *returns* an exception
