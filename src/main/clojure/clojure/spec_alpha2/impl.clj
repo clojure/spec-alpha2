@@ -20,6 +20,16 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- resolve-form
+  [form]
+  (if (keyword? form)
+    form
+    (-> form s/spec* s/form)))
+
+(defn- resolve-forms
+  [forms]
+  (map resolve-form forms))
+
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
   [spec-or-k]
@@ -55,16 +65,31 @@
       (with-gen* [_ gfn] (fn-impl form gfn))
       (describe* [_] (#'s/unfn form)))))
 
-(defmethod s/create-spec 'fn*
+(defmethod s/expand-spec 'fn*
   [[_ & fn-tail]]
+  {:clojure.spec/op 'fn*
+   :fn-tail (vec fn-tail)})
+
+(defmethod s/create-spec 'fn*
+  [{:keys [fn-tail]}]
   (fn-impl `(fn* ~@fn-tail) nil))
 
-(defmethod s/create-spec `fn
+(defmethod s/expand-spec `fn
   [[_ & fn-tail]]
+  {:clojure.spec/op `fn
+   :fn-tail (vec fn-tail)})
+
+(defmethod s/create-spec `fn
+  [{:keys [fn-tail]}]
   (fn-impl `(fn ~@fn-tail) nil))
 
-(defmethod s/create-spec 'fn
+(defmethod s/expand-spec 'fn
   [[_ & fn-tail]]
+  {:clojure.spec/op 'fn
+   :fn-tail (vec fn-tail)})
+
+(defmethod s/create-spec 'fn
+  [{:keys [fn-tail]}]
   (fn-impl `(fn ~@fn-tail) nil))
 
 (defmethod s/create-spec `s/with-gen
@@ -90,44 +115,86 @@
           [{:path path :pred `(s/conformer ~f-form ~@(if unf-form (vector unf-form) nil)) :val x :via via :in in}]))
       (gen* [_ _ _ _] (if gfn (gfn) (gen/gen-for-pred f)))
       (with-gen* [_ gfn] (conformer-impl f-form unf-form gfn))
-      (describe* [_] `(conformer ~f-form ~@(if unf-form (vector unf-form) nil))))))
+      (describe* [_] `(s/conformer ~f-form ~@(if unf-form (vector unf-form) nil))))))
+
+(defmethod s/expand-spec `s/conformer
+  [[_ f & [unf]]]
+  (cond->
+    {:clojure.spec/op `s/conformer
+     :f f}
+    unf (assoc :unf unf)))
 
 (defmethod s/create-spec `s/conformer
-  [[_ f & [unf]]]
+  [{:keys [f unf]}]
   (conformer-impl f unf nil))
 
 (declare cat-impl alt-impl rep-impl rep+impl maybe-impl amp-impl)
 
-(defmethod s/create-spec `s/*
+(defmethod s/expand-spec `s/*
   [[_ pred-form]]
-  (rep-impl pred-form (s/spec* pred-form)))
+  {:clojure.spec/op `s/*
+   :spec pred-form})
+
+(defmethod s/create-spec `s/*
+  [{:keys [spec]}]
+  (rep-impl spec (s/spec* spec)))
+
+(defmethod s/expand-spec `s/+
+  [[_ pred-form]]
+  {:clojure.spec/op `s/+
+   :spec pred-form})
 
 (defmethod s/create-spec `s/+
+  [{:keys [spec]}]
+  (rep+impl spec (s/spec* spec)))
+
+(defmethod s/expand-spec `s/?
   [[_ pred-form]]
-  (rep+impl pred-form (s/spec* pred-form)))
+  {:clojure.spec/op `s/?
+   :spec pred-form})
 
 (defmethod s/create-spec `s/?
-  [[_ pred-form]]
-  (maybe-impl (s/spec* pred-form) pred-form))
+  [{:keys [spec]}]
+  (maybe-impl (s/spec* spec) spec))
+
+(defmethod s/expand-spec `s/alt
+  [[_ & key-pred-forms]]
+  (let [pairs (partition 2 key-pred-forms)
+        keys (mapv first pairs)
+        pred-forms (mapv second pairs)]
+    {:clojure.spec/op `s/alt
+     :keys keys
+     :specs pred-forms}))
 
 (defmethod s/create-spec `s/alt
+  [{:keys [keys specs]}]
+  (assert (and (= (count keys) (count specs))
+            (every? keyword? keys))
+    "alt expects k1 p1 k2 p2..., where ks are keywords")
+  (alt-impl keys (mapv s/spec* specs) specs))
+
+(defmethod s/expand-spec `s/cat
   [[_ & key-pred-forms]]
   (let [pairs (partition 2 key-pred-forms)
         keys (mapv first pairs)
         pred-forms (mapv second pairs)]
-    (assert (and (even? (count key-pred-forms)) (every? keyword? keys)) "alt expects k1 p1 k2 p2..., where ks are keywords")
-    (alt-impl keys (mapv s/spec* pred-forms) pred-forms)))
+    {:clojure.spec/op `s/cat
+     :keys keys
+     :specs pred-forms}))
 
 (defmethod s/create-spec `s/cat
-  [[_ & key-pred-forms]]
-  (let [pairs (partition 2 key-pred-forms)
-        keys (mapv first pairs)
-        pred-forms (mapv second pairs)]
-    (assert (and (even? (count key-pred-forms)) (every? keyword? keys)) "cat expects k1 p1 k2 p2..., where ks are keywords")
-    (cat-impl keys (mapv s/spec* pred-forms) pred-forms)))
+  [{:keys [keys specs]}]
+  (assert (and (= (count keys) (count specs)) (every? keyword? keys)) "cat expects k1 p1 k2 p2..., where ks are keywords")
+  (cat-impl keys (mapv s/spec* specs) specs))
+
+(defmethod s/expand-spec 'clojure.spec-alpha2/&
+  [[_ re & preds]]
+  {:clojure.spec/op 'clojure.spec-alpha2/&
+   :re re
+   :preds (vec preds)})
 
 (defmethod s/create-spec 'clojure.spec-alpha2/&
-  [[_ re & preds]]
+  [{:keys [re preds]}]
   (amp-impl (s/spec* re) re (mapv s/spec* preds) (mapv #'s/unfn preds)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -288,8 +355,12 @@
                                    req-un (conj :req-un req-un)
                                    opt-un (conj :opt-un opt-un)))))))
 
+(defmethod s/expand-spec `s/keys
+  [[_ & opts]]
+  (conj {:clojure.spec/op `s/keys} (apply hash-map opts)))
+
 (defmethod s/create-spec `s/keys
-  [[_ & {:keys [req req-un opt opt-un gen]}]]
+  [{:keys [req req-un opt opt-un gen]}]
   (let [unk #(-> % name keyword)
         req-keys (filterv keyword? (flatten req))
         req-un-specs (filterv keyword? (flatten req-un))
@@ -405,9 +476,14 @@
       Schema
       (keyspecs* [_] key-specs))))
 
+(defmethod s/expand-spec `s/schema
+  [[_ coll]]
+  {:clojure.spec/op `s/schema
+   :schema coll})
+
 (defmethod s/create-spec `s/schema
-  [[_s coll]]
-  (schema-impl coll nil))
+  [{:keys [schema]}]
+  (schema-impl schema nil))
 
 (defn- union-impl
   [schemas gfn]
@@ -428,8 +504,13 @@
       (with-gen* [_ gfn] (union-impl schemas gfn))
       (describe* [_] `(s/union ~@schemas)))))
 
-(defmethod s/create-spec `s/union
+(defmethod s/expand-spec `s/union
   [[_ & schemas]]
+  {:clojure.spec/op `s/union
+   :schemas (vec schemas)})
+
+(defmethod s/create-spec `s/union
+  [{:keys [schemas]}]
   (union-impl schemas nil))
 
 (defn- select-impl
@@ -531,10 +612,24 @@
       (with-gen* [_ gfn] (select-impl schema-form selection gfn))
       (describe* [_] `(s/select ~schema-form ~selection)))))
 
-(defmethod s/create-spec `s/select
+(defmethod s/expand-spec `s/select
   [[_ schema selection]]
+  {:clojure.spec/op `s/select
+   :schema schema
+   :selection selection})
+
+(defmethod s/create-spec `s/select
+  [{:keys [schema selection] :as x}]
   (assert (vector? selection))
   (select-impl schema selection nil))
+
+(comment
+  (s/def ::k1 int?)
+  (s/def ::k2 keyword?)
+
+  (s/conform (s/select [::k1 ::k2] [*]) {::k1 1})
+
+  )
 
 (defn- nest-impl
   [re-form gfn]
@@ -549,11 +644,16 @@
           (gfn)
           (gen* @spec overrides path rmap)))
       (with-gen* [_ gfn] (nest-impl re-form gfn))
-      (describe* [_] `(s/nest ~(describe* @spec))))))
+      (describe* [_] `(s/nest ~(describe* ~(resolve-form re-form)))))))
+
+(defmethod s/expand-spec `s/nest
+  [[_ re]]
+  {:clojure.spec/op `s/nest
+   :spec re})
 
 (defmethod s/create-spec `s/nest
-  [[_ re]]
-  (nest-impl re nil))
+  [{:keys [spec]}]
+  (nest-impl spec nil))
 
 (defn- multi-spec-impl
   "Do not call this directly, use 'multi-spec'"
@@ -600,10 +700,16 @@
              (when (every? identity gs)
                (gen/one-of gs)))))
        (with-gen* [_ gfn] (multi-spec-impl form mmvar retag gfn))
-       (describe* [_] `(s/multi-spec ~form ~retag))))))
+       (describe* [_] `(s/multi-spec ~(resolve-form form) ~retag))))))
+
+(defmethod s/expand-spec `s/multi-spec
+  [[_ mm retag]]
+  {:clojure.spec/op `s/multi-spec
+   :mm mm
+   :retag retag})
 
 (defmethod s/create-spec `s/multi-spec
-  [[_ mm retag]]
+  [{:keys [mm retag]}]
   (multi-spec-impl mm (find-var mm) retag))
 
 (defn- tuple-impl
@@ -662,22 +768,24 @@
              (when (every? identity gs)
                (apply gen/tuple gs)))))
        (with-gen* [_ gfn] (tuple-impl forms gfn))
-       (describe* [_] `(s/tuple ~@forms))))))
+       (describe* [_] `(s/tuple ~@(resolve-forms forms)))))))
+
+(defmethod s/expand-spec `s/tuple
+  [[_ & preds]]
+  {:clojure.spec/op `s/tuple
+   :specs (vec preds)})
 
 (defmethod s/create-spec `s/tuple
-  [[_ & preds]]
-  (tuple-impl (vec preds)))
+  [{:keys [specs]}]
+  (tuple-impl (vec specs)))
 
 (defn- tagged-ret [tag ret]
   (clojure.lang.MapEntry. tag ret))
 
 (defn- or-spec-impl
   "Do not call this directly, use 'or'"
-  [key-forms gfn]
-  (let [pairs (partition 2 key-forms)
-        keys (mapv first pairs)
-        forms (mapv second pairs)
-        id (java.util.UUID/randomUUID)
+  [keys forms gfn]
+  (let [id (java.util.UUID/randomUUID)
         specs (delay (mapv s/spec* forms))
         kps (zipmap keys @specs)
         cform (case (count forms)
@@ -734,12 +842,22 @@
                 gs (remove nil? (map gen keys @specs forms))]
             (when-not (empty? gs)
               (gen/one-of gs)))))
-      (with-gen* [_ gfn] (or-spec-impl key-forms gfn))
-      (describe* [_] `(s/or ~@(mapcat vector keys forms))))))
+      (with-gen* [_ gfn] (or-spec-impl keys forms gfn))
+      (describe* [_] `(s/or ~@(mapcat vector keys (map resolve-form forms)))))))
 
 (defmethod s/create-spec `s/or
+  [{:keys [keys specs]}]
+  (assert (= (count keys) (count specs)))
+  (or-spec-impl keys specs nil))
+
+(defmethod s/expand-spec `s/or
   [[_ & key-pred-forms]]
-  (or-spec-impl key-pred-forms nil))
+  (let [pairs (partition 2 key-pred-forms)
+        keys (mapv first pairs)
+        specs (mapv second pairs)]
+    {:clojure.spec/op `s/or
+     :keys keys
+     :specs specs}))
 
 (defn- and-spec-impl
   "Do not call this directly, use 'and'"
@@ -776,15 +894,20 @@
       Spec
       (conform* [_ x settings-key settings] (cform x settings-key settings))
       (unform* [_ x] (reduce #(s/unform %2 %1) x (reverse @specs)))
-      (explain* [_ path via in x settings-key settings] (explain-pred-list forms @specs path via in x settings-key settings))
+      (explain* [_ path via in x settings-key settings] (explain-pred-list (map s/form @specs) @specs path via in x settings-key settings))
 
       (gen* [_ overrides path rmap] (if gfn (gfn) (#'s/gensub (first @specs) overrides path rmap (first forms))))
       (with-gen* [_ gfn] (and-spec-impl forms gfn))
-      (describe* [_] `(s/and ~@forms)))))
+      (describe* [_] `(s/and ~@(resolve-forms forms))))))
+
+(defmethod s/expand-spec `s/and
+  [[_ & pred-forms]]
+  {:clojure.spec/op `s/and
+   :specs (vec pred-forms)})
 
 (defmethod s/create-spec `s/and
-  [[_ & pred-forms]]
-  (and-spec-impl pred-forms nil))
+  [{:keys [specs]}]
+  (and-spec-impl specs nil))
 
 (defn- merge-spec-impl
   "Do not call this directly, use 'merge'"
@@ -809,11 +932,16 @@
           (apply gen/tuple (map #(#'s/gensub %1 overrides path rmap %2)
                                 preds forms)))))
     (with-gen* [_ gfn] (merge-spec-impl forms preds gfn))
-    (describe* [_] `(s/merge ~@forms))))
+    (describe* [_] `(s/merge ~@(resolve-forms forms)))))
+
+(defmethod s/expand-spec `s/merge
+  [[_ & pred-forms]]
+  {:clojure.spec/op `s/merge
+   :specs (vec pred-forms)})
 
 (defmethod s/create-spec `s/merge
-  [[_ & pred-forms]]
-  (merge-spec-impl pred-forms (mapv s/spec* pred-forms) nil))
+  [{:keys [specs]}]
+  (merge-spec-impl specs (mapv s/spec* specs) nil))
 
 (defn- coll-prob [x kfn kform distinct count min-count max-count
                   path via in settings-key settings]
@@ -959,9 +1087,16 @@
        (with-gen* [_ gfn] (every-impl form opts gfn))
        (describe* [_] describe-form)))))
 
+(defmethod s/expand-spec `s/every
+  [[_ pred & opts]]
+  {:clojure.spec/op `s/every
+   :spec pred
+   :opts (apply hash-map opts)})
+
 (defmethod s/create-spec `s/every
-  [[_ pred & {:keys [into kind count max-count min-count distinct gen-max gen] :as opts}]]
-  (let [gx (gensym)
+  [{:keys [spec opts]}]
+  (let [{:keys [into kind count max-count min-count distinct gen-max gen]} opts
+        gx (gensym)
         cpreds (cond-> [(list (or kind `coll?) gx)]
                        count (conj `(= ~count (bounded-count ~count ~gx)))
                        (or min-count max-count)
@@ -977,32 +1112,55 @@
                   (assoc ::s/cpred (eval cpred))
                   (cond->
                     kind (assoc :kind (eval kind) ::s/kind-form kind)))]
-    (every-impl pred eopts gen)))
+    (every-impl spec eopts gen)))
+
+(defmethod s/expand-spec `s/every-kv
+  [[_ kpred vpred & opts]]
+  {:clojure.spec/op `s/every-kv
+   :kspec kpred
+   :vspec vpred
+   :opts (apply hash-map opts)})
 
 (defmethod s/create-spec `s/every-kv
-  [[_ kpred vpred & opts]]
-  (s/create-spec (concat [`s/every `(s/tuple ~kpred ~vpred)]
-                         opts
-                         [::s/kfn (fn [i# v#] (nth v# 0))
-                          :into {}
-                          ::s/describe `(s/every-kv ~kpred ~vpred ~@opts)])))
+  [{:keys [kspec vspec opts]}]
+  (s/create-spec
+    {:clojure.spec/op `s/every
+     :spec `(s/tuple ~kspec ~vspec)
+     :opts (merge opts {::s/kfn (fn [i# v#] (nth v# 0))
+                        :into {}
+                        ::s/describe `(s/every-kv ~(resolve-form kspec) ~(resolve-form vspec) ~@(mapcat identity opts))})}))
+
+(defmethod s/expand-spec `s/coll-of
+  [[_ pred & opts]]
+  {:clojure.spec/op `s/coll-of
+   :spec pred
+   :opts (apply hash-map opts)})
 
 (defmethod s/create-spec `s/coll-of
-  [[_ pred & opts]]
-  (s/create-spec (concat [`s/every pred]
-                         opts
-                         [::s/conform-all true
-                          ::s/describe `(s/coll-of ~pred ~@opts)])))
+  [{:keys [spec opts]}]
+  (s/create-spec
+    {:clojure.spec/op `s/every
+     :spec spec
+     :opts (merge opts {::s/conform-all true
+                        ::s/describe `(s/coll-of ~(resolve-form spec) ~@(mapcat identity opts))})}))
+
+(defmethod s/expand-spec `s/map-of
+  [[_ kpred vpred & opts]]
+  {:clojure.spec/op `s/map-of
+   :kspec kpred
+   :vspec vpred
+   :opts (apply hash-map opts)})
 
 (defmethod s/create-spec `s/map-of
-  [[_ kpred vpred & opts]]
-  (s/create-spec (concat [`s/every `(s/tuple ~kpred ~vpred)]
-                         opts
-                         [::s/kfn (fn [i# v#] (nth v# 0))
-                          :into {}
-                          ::s/conform-all true
-                          :kind `map?
-                          ::s/describe `(s/map-of ~kpred ~vpred ~@opts)])))
+  [{:keys [kspec vspec opts]}]
+  (s/create-spec
+    {:clojure.spec/op `s/every
+     :spec `(s/tuple ~kspec ~vspec)
+     :opts (merge opts {::s/kfn (fn [i# v#] (nth v# 0))
+                        :into {}
+                        ::s/conform-all true
+                        :kind `map?
+                        ::s/describe `(s/map-of ~(resolve-form kspec) ~(resolve-form vspec) ~@(mapcat identity opts))})}))
 
 ;;;;;;;;;;;;;;;;;;;;;;; regex ;;;;;;;;;;;;;;;;;;;
 ;;See:
@@ -1224,14 +1382,14 @@
       (case op
         ::s/accept nil
         nil p
-        ::s/amp (list* 'clojure.spec-alpha2/& amp forms)
+        ::s/amp (list* 'clojure.spec-alpha2/& (resolve-form amp) (resolve-forms forms))
         ::s/pcat (if rep+
                  (list `s/+ rep+)
-                 (cons `s/cat (mapcat vector (or (seq ks) (repeat :_)) forms)))
+                 (cons `s/cat (mapcat vector (or (seq ks) (repeat :_)) (resolve-forms forms))))
         ::s/alt (if maybe
                 (list `s/? maybe)
-                (cons `s/alt (mapcat vector ks forms)))
-        ::s/rep (list (if splice `s/+ `s/*) forms)))))
+                (cons `s/alt (mapcat vector ks (resolve-forms forms))))
+        ::s/rep (list (if splice `s/+ `s/*) (resolve-form forms))))))
 
 (defn- op-explain [form p path via in input settings-key settings]
   ;;(prn {:form form :p p :path path :input input})
@@ -1371,10 +1529,15 @@
                   :via via
                   :in (conj in i)}]))))))
 
+(defmethod s/expand-spec `s/keys*
+  [[_ & kspecs]]
+  {:clojure.spec/op `s/keys*
+   :specs (vec kspecs)})
+
 (s/def ::s/kvs->map (s/conformer #(zipmap (map ::k %) (map ::v %)) #(map (fn [[k v]] {::k k ::v v}) %)))
 
 (defmethod s/create-spec `s/keys*
-  [[_ & kspecs]]
+  [{kspecs :specs}]
   (s/spec*
     `(s/with-gen
        (s/& (s/* (s/cat ::k keyword? ::v any?))
@@ -1446,10 +1609,18 @@
                                     (assert (pvalid? argspec args) (with-out-str (s/explain argspec args)))
                                     (gen/generate (s/gen retspec overrides))))))
       (with-gen* [_ gfn] (fspec-impl argspec aform retspec rform fnspec fform gfn))
-      (describe* [_] `(fspec :args ~aform :ret ~rform :fn ~fform)))))
+      (describe* [_] `(fspec :args ~(resolve-form aform) :ret ~(resolve-form rform) :fn ~(resolve-form fform))))))
+
+(defmethod s/expand-spec `s/fspec
+  [[_ & {:keys [args ret fn gen]}]]
+  {:clojure.spec/op `s/fspec
+   :args args
+   :ret ret
+   :fn fn
+   :gen gen})
 
 (defmethod s/create-spec `s/fspec
-  [[_ & {:keys [args ret fn gen] :or {ret `any?}}]]
+  [{:keys [args ret fn gen] :or {ret `any?}}]
   (fspec-impl (s/spec* args) args
               (s/spec* ret) ret
               (s/spec* fn) fn (eval gen)))
@@ -1457,8 +1628,8 @@
 (defn- nonconforming-impl
   ([spec]
     (nonconforming-impl spec nil))
-  ([spec gfn]
-   (let [spec (delay (s/spec* spec))]
+  ([ospec gfn]
+   (let [spec (delay (s/spec* ospec))]
      (reify
        Spec
        (conform* [_ x settings-key settings]
@@ -1471,10 +1642,15 @@
          (explain* @spec path via in x settings-key settings))
        (gen* [_ overrides path rmap] (gen* @spec overrides path rmap))
        (with-gen* [_ gfn] (nonconforming-impl (nonconforming-impl spec gfn)))
-       (describe* [_] `(s/nonconforming ~(describe* @spec)))))))
+       (describe* [_] `(s/nonconforming ~(resolve-form ospec)))))))
+
+(defmethod s/expand-spec `s/nonconforming
+  [[_ spec]]
+  {:clojure.spec/op `s/nonconforming
+   :spec spec})
 
 (defmethod s/create-spec `s/nonconforming
-  [[_ spec]]
+  [{:keys [spec]}]
   (nonconforming-impl spec))
 
 (defn- nilable-impl
@@ -1488,17 +1664,22 @@
       (explain* [_ path via in x settings-key settings]
         (when-not (or (pvalid? @spec x) (nil? x))
           (conj
-            (explain-1 form @spec (conj path ::s/pred) via in x nil settings)
+            (explain-1 (s/form @spec) @spec (conj path ::s/pred) via in x nil settings)
             {:path (conj path ::s/nil) :pred 'nil? :val x :via via :in in})))
       (gen* [_ overrides path rmap]
         (if gfn
           (gfn)
           (gen/frequency
             [[1 (gen/delay (gen/return nil))]
-             [9 (gen/delay (#'s/gensub @spec overrides (conj path ::s/pred) rmap form))]])))
+             [9 (gen/delay (#'s/gensub @spec overrides (conj path ::s/pred) rmap (s/form @spec)))]])))
       (with-gen* [_ gfn] (nilable-impl form gfn))
-      (describe* [_] `(s/nilable ~(#'s/res form))))))
+      (describe* [_] `(s/nilable ~(resolve-form form))))))
+
+(defmethod s/expand-spec `s/nilable
+  [[_ pred]]
+  {:clojure.spec/op `s/nilable
+   :spec pred})
 
 (defmethod s/create-spec `s/nilable
-  [[_ pred]]
-  (nilable-impl pred nil))
+  [{:keys [spec]}]
+  (nilable-impl spec nil))

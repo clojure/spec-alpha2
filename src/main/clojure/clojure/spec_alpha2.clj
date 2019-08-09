@@ -127,11 +127,22 @@
        :else %)
     form))
 
+(defmulti expand-spec
+  "Create a symbolic spec map from an explicated spec form. This is an
+  extension point for adding new spec ops. Generally, consumers should
+  instead call `spec*`. For anything other than symbolic spec maps,
+  return the same object unchanged."
+  (fn [qform] (when (c/or (list? qform) (seq? qform)) (first qform))))
+
+(defmethod expand-spec :default [o] o)
+
 (defmulti create-spec
-  "Create a spec object from an explicated spec form. This is an extension
-  point for adding new spec forms. Generally, consumers should instead call
-  `spec*` instead."
-  (fn [qform] (first qform)))
+  "Create a spec object from an explicated spec map. This is an extension
+  point for adding new spec ops. Generally, consumers should instead call
+  `spec*`."
+  (fn [smap] (when (map? smap) (:clojure.spec/op smap))))
+
+(defmethod create-spec :default [o] o)
 
 (defn- pred-impl
   ([sym]
@@ -189,10 +200,11 @@
   (cond
     (keyword? qform) (reg-resolve! qform)
     (qualified-symbol? qform) (pred-impl (res qform))
-    (c/or (list? qform) (seq? qform)) (create-spec qform)
+    (c/or (list? qform) (seq? qform)) (-> qform expand-spec create-spec)
+    (map? qform) (create-spec qform)
     (set? qform) (set-impl qform)
     (nil? qform) nil
-    (simple-symbol? qform) (throw (IllegalStateException. (str "Symbolic spec must be fully-qualified: " qform)))
+    (simple-symbol? qform) (throw (IllegalArgumentException. (str "Symbolic spec must be fully-qualified: " qform)))
     :else (throw (IllegalArgumentException. (str "Unknown spec op of type: " (class qform))))))
 
 (defn- specize [x]
@@ -204,8 +216,8 @@
   [sform]
   (cond
     (keyword? sform) (reg-resolve! sform)
-    (vector? sform) (create-spec `(schema ~sform))
-    (map? sform) (create-spec `(schema [~sform]))
+    (vector? sform) (create-spec `{:clojure.spec/op schema, :schema ~sform})
+    (map? sform) (create-spec `{:clojure.spec/op schema, :schemas [~sform]})
     (c/or (list? sform) (seq? sform)) (create-spec sform)
     (nil? sform) nil
     :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
@@ -902,11 +914,17 @@ set. You can toggle check-asserts? with (check-asserts bool)."
         ns-name (ns-name *ns*)
         op (symbol (name ns-name) (name op-name))]
     `(do
-       (defmethod create-spec '~op
+       (defmethod expand-spec '~op
          [[~'_ ~'& ~'sargs]]
-         (let [m# (sig-map '~args ~'sargs) ;; map of arg name to arg value
+         (let [os# '~op]
+           {:clojure.spec/op os#
+            :args ~'sargs}))
+       (defmethod create-spec '~op
+         [~'mform]
+         (let [a# (:args ~'mform)
+               m# (sig-map '~args a#) ;; map of arg name to arg value
                sp# (delay (spec* (explicate '~ns-name (walk/postwalk (fn [x#] (get m# x# x#)) '~form))))]
-           (op-spec sp# (cons '~op ~'sargs) (eval (walk/postwalk (fn [x#] (get m# x# x#)) '~gen)))))
+           (op-spec sp# (cons '~op a#) (eval (walk/postwalk (fn [x#] (get m# x# x#)) '~gen)))))
        (defmacro ~op-name
          ~@(if doc [doc] [])       ;; docstring
          {:arglists (list '~args)} ;; metadata with arglists
