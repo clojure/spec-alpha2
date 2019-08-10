@@ -190,12 +190,12 @@
 (defmethod s/expand-spec 'clojure.spec-alpha2/&
   [[_ re & preds]]
   {:clojure.spec/op 'clojure.spec-alpha2/&
-   :re re
+   :spec re
    :preds (vec preds)})
 
 (defmethod s/create-spec 'clojure.spec-alpha2/&
-  [{:keys [re preds]}]
-  (amp-impl (s/spec* re) re (mapv s/spec* preds) (mapv #'s/unfn preds)))
+  [{:keys [spec preds]}]
+  (amp-impl (s/spec* spec) spec (mapv s/spec* preds) (mapv #'s/unfn preds)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- recur-limit? [rmap id path k]
