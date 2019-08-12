@@ -92,8 +92,14 @@
   [{:keys [fn-tail]}]
   (fn-impl `(fn ~@fn-tail) nil))
 
-(defmethod s/create-spec `s/with-gen
+(defmethod s/expand-spec `s/with-gen
   [[_ spec gen-fn]]
+  {:clojure.spec/op `s/with-gen
+   :spec spec
+   :gen-fn gen-fn})
+
+(defmethod s/create-spec `s/with-gen
+  [{:keys [spec gen-fn]}]
   (let [spec (s/spec* spec)
         g (eval gen-fn)]
     (if (s/regex? spec)
