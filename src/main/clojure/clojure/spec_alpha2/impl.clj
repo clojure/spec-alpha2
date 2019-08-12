@@ -292,7 +292,7 @@
             (loop [ret m, [[k v] & ks :as keys] m]
               (if keys
                 (let [sname (keys->specnames k)]
-                  (if-let [s (s/spec* sname)]
+                  (if-let [s (#'s/reg-resolve sname)]
                     (let [cv (conform* s v k settings)]
                       (if (s/invalid? cv)
                         ::s/invalid

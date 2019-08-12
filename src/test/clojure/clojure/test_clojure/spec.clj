@@ -31,6 +31,7 @@
 (s/def ::mk2 keyword?)
 (s/def ::mk3 string?)
 (s/def ::m (s/keys :req [::mk1] :opt [::mk2 ::mk3]))
+(s/def ::mu (s/keys :req-un [::mk1]))
 (s/def ::sch (s/schema [::mk1 ::mk2 ::mk3]))
 
 (deftest conform-explain
@@ -62,9 +63,9 @@
     (are [spec x conformed ed]
       (let [co (result-or-ex (s/conform spec x))
             e (result-or-ex (::sa/problems (s/explain-data spec x)))]
-        (when (not= conformed co) (println "conform fail\n\texpect=" conformed "\n\tactual=" co))
+        (when (not= conformed co) (println "conform fail\n\texpect=" (pr-str conformed) "\n\tactual=" (pr-str co)))
         (when (not (every? true? (map submap? ed e)))
-          (println "explain failures\n\texpect=" ed "\n\tactual failures=" e "\n\tsubmap?=" (map submap? ed e)))
+          (println "explain failures\n\texpect=" (pr-str ed) "\n\tactual failures=" (pr-str e) "\n\tsubmap?=" (map submap? ed e)))
         (and (= conformed co) (every? true? (map submap? ed e))))
 
       lrange 7 7 nil
@@ -142,6 +143,16 @@
       andre2 nil ::s/invalid [{:pred #{[:a]}, :val []}]
       andre2 [] ::s/invalid [{:pred #{[:a]}, :val []}]
       andre2 [:a] [:a] nil
+
+      ::m nil ::s/invalid '[{:pred clojure.core/map?, :val nil}]
+      ::m {} ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/contains? % ::mk1)), :val {}}]
+      ::m {::mk1 :bad} ::s/invalid '[{:pred clojure.core/int?, :val :bad, :path [::mk1], :in [::mk1]}]
+      ::m {::mk1 100 ::mk2 :kw ::else true} {::mk1 100 ::mk2 :kw ::else true} nil
+
+      ::mu nil ::s/invalid '[{:pred clojure.core/map?, :val nil}]
+      ::mu {} ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/contains? % :mk1)), :val {}}]
+      ::mu {:mk1 :bad} ::s/invalid '[{:pred clojure.core/int?, :val :bad, :path [:mk1], :in [:mk1]}]
+      ::mu {:mk1 100} {:mk1 100} nil
 
       m nil ::s/invalid '[{:pred clojure.core/map?, :val nil}]
       m {} {} nil
