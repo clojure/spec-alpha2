@@ -24,7 +24,7 @@
   [form]
   (if (keyword? form)
     form
-    (-> form s/spec* s/form)))
+    (-> form s/resolve-spec s/form)))
 
 (defn- resolve-forms
   [forms]
@@ -100,7 +100,7 @@
 
 (defmethod s/create-spec `s/with-gen
   [{:keys [spec gen-fn]}]
-  (let [spec (s/spec* spec)
+  (let [spec (s/resolve-spec spec)
         g (eval gen-fn)]
     (if (s/regex? spec)
       (assoc spec ::gfn g)
@@ -143,7 +143,7 @@
 
 (defmethod s/create-spec `s/*
   [{:keys [spec]}]
-  (rep-impl spec (s/spec* spec)))
+  (rep-impl spec (s/resolve-spec spec)))
 
 (defmethod s/expand-spec `s/+
   [[_ pred-form]]
@@ -152,7 +152,7 @@
 
 (defmethod s/create-spec `s/+
   [{:keys [spec]}]
-  (rep+impl spec (s/spec* spec)))
+  (rep+impl spec (s/resolve-spec spec)))
 
 (defmethod s/expand-spec `s/?
   [[_ pred-form]]
@@ -161,7 +161,7 @@
 
 (defmethod s/create-spec `s/?
   [{:keys [spec]}]
-  (maybe-impl (s/spec* spec) spec))
+  (maybe-impl (s/resolve-spec spec) spec))
 
 (defmethod s/expand-spec `s/alt
   [[_ & key-pred-forms]]
@@ -177,7 +177,7 @@
   (assert (and (= (count keys) (count specs))
             (every? keyword? keys))
     "alt expects k1 p1 k2 p2..., where ks are keywords")
-  (alt-impl keys (mapv s/spec* specs) specs))
+  (alt-impl keys (mapv s/resolve-spec specs) specs))
 
 (defmethod s/expand-spec `s/cat
   [[_ & key-pred-forms]]
@@ -191,7 +191,7 @@
 (defmethod s/create-spec `s/cat
   [{:keys [keys specs]}]
   (assert (and (= (count keys) (count specs)) (every? keyword? keys)) "cat expects k1 p1 k2 p2..., where ks are keywords")
-  (cat-impl keys (mapv s/spec* specs) specs))
+  (cat-impl keys (mapv s/resolve-spec specs) specs))
 
 (defmethod s/expand-spec 'clojure.spec-alpha2/&
   [[_ re & preds]]
@@ -201,7 +201,7 @@
 
 (defmethod s/create-spec 'clojure.spec-alpha2/&
   [{:keys [spec preds]}]
-  (amp-impl (s/spec* spec) spec (mapv s/spec* preds) (mapv #'s/unfn preds)))
+  (amp-impl (s/resolve-spec spec) spec (mapv s/resolve-spec preds) (mapv #'s/unfn preds)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; impl ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- recur-limit? [rmap id path k]
@@ -415,7 +415,7 @@
         ks (filter keyword? coll)
         qks (zipmap ks ks)
         unq-map (apply merge (filter map? coll))
-        unq-specs (map s/spec* (vals unq-map))
+        unq-specs (map s/resolve-spec (vals unq-map))
         uqks (zipmap (keys unq-map) unq-specs)
         key-specs (merge uqks qks)
         lookup #(or (s/get-spec %) (get key-specs %))]
@@ -533,7 +533,7 @@
                     (if (s/schema? schema-obj)
                       (let [sub-schema (vec (some-> schema-obj keyspecs keys))
                             sub-selection (get sub-selects % [])]
-                        (s/spec* `(s/select ~sub-schema ~sub-selection)))
+                        (s/resolve-spec `(s/select ~sub-schema ~sub-selection)))
                       schema-obj))
                   (get key-specs %))
         opt-kset (set/difference (set/union (-> key-specs keys set)
@@ -639,7 +639,7 @@
 
 (defn- nest-impl
   [re-form gfn]
-  (let [spec (delay (s/spec* re-form))]
+  (let [spec (delay (s/resolve-spec re-form))]
     (reify
       Spec
       (conform* [_ x settings-key settings] (conform* @spec x settings-key settings))
@@ -722,7 +722,7 @@
   "Do not call this directly, use 'tuple'"
   ([forms] (tuple-impl forms nil))
   ([forms gfn]
-   (let [specs (delay (mapv s/spec* forms))
+   (let [specs (delay (mapv s/resolve-spec forms))
          cnt (count forms)]
      (reify
        Spec
@@ -792,7 +792,7 @@
   "Do not call this directly, use 'or'"
   [keys forms gfn]
   (let [id (java.util.UUID/randomUUID)
-        specs (delay (mapv s/spec* forms))
+        specs (delay (mapv s/resolve-spec forms))
         kps (zipmap keys @specs)
         cform (case (count forms)
                 2 (fn [x settings-key settings]
@@ -868,7 +868,7 @@
 (defn- and-spec-impl
   "Do not call this directly, use 'and'"
   [forms gfn]
-  (let [specs (delay (mapv s/spec* forms))
+  (let [specs (delay (mapv s/resolve-spec forms))
         cform
         (case (count forms)
           2 (fn [x settings-key settings]
@@ -947,7 +947,7 @@
 
 (defmethod s/create-spec `s/merge
   [{:keys [specs]}]
-  (merge-spec-impl specs (mapv s/spec* specs) nil))
+  (merge-spec-impl specs (mapv s/resolve-spec specs) nil))
 
 (defn- coll-prob [x kfn kform distinct count min-count max-count
                   path via in settings-key settings]
@@ -982,7 +982,7 @@
           :as opts}
     gfn]
    (let [gen-into (if conform-into (empty conform-into) (get empty-coll kind-form))
-         spec (delay (s/spec* form))
+         spec (delay (s/resolve-spec form))
          check? #(s/valid? @spec %)
          kfn (if kfn (eval kfn) (fn [i v] v))
          addcv (fn [ret i v cv] (conj ret cv))
@@ -1068,7 +1068,7 @@
                (cond
                  gen-into (gen/return gen-into)
                  kind (gen/fmap #(if (empty? %) % (empty %))
-                                (#'s/gensub (s/spec* kind-form) overrides path rmap form))
+                                (#'s/gensub (s/resolve-spec kind-form) overrides path rmap form))
                  :else (gen/return []))
                (fn [init]
                  (gen/fmap
@@ -1544,7 +1544,7 @@
 
 (defmethod s/create-spec `s/keys*
   [{kspecs :specs}]
-  (s/spec*
+  (s/resolve-spec
     `(s/with-gen
        (s/& (s/* (s/cat ::k keyword? ::v any?))
             ::s/kvs->map
@@ -1627,15 +1627,15 @@
 
 (defmethod s/create-spec `s/fspec
   [{:keys [args ret fn gen] :or {ret `any?}}]
-  (fspec-impl (s/spec* args) args
-              (s/spec* ret) ret
-              (s/spec* fn) fn (eval gen)))
+  (fspec-impl (s/resolve-spec args) args
+              (s/resolve-spec ret) ret
+              (s/resolve-spec fn) fn (eval gen)))
 
 (defn- nonconforming-impl
   ([spec]
     (nonconforming-impl spec nil))
   ([ospec gfn]
-   (let [spec (delay (s/spec* ospec))]
+   (let [spec (delay (s/resolve-spec ospec))]
      (reify
        Spec
        (conform* [_ x settings-key settings]
@@ -1662,7 +1662,7 @@
 (defn- nilable-impl
   "Do not call this directly, use 'nilable'"
   [form gfn]
-  (let [spec (delay (s/spec* form))]
+  (let [spec (delay (s/resolve-spec form))]
     (reify
       Spec
       (conform* [_ x settings-key settings] (if (nil? x) nil (conform* @spec x settings-key settings)))

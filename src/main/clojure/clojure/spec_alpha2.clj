@@ -130,7 +130,7 @@
 (defmulti expand-spec
   "Create a symbolic spec map from an explicated spec form. This is an
   extension point for adding new spec ops. Generally, consumers should
-  instead call `spec*`. For anything other than symbolic spec maps,
+  instead call `resolve-spec`. For anything other than symbolic spec maps,
   return the same object unchanged."
   (fn [qform] (when (c/or (list? qform) (seq? qform)) (first qform))))
 
@@ -139,7 +139,7 @@
 (defmulti create-spec
   "Create a spec object from an explicated spec map. This is an extension
   point for adding new spec ops. Generally, consumers should instead call
-  `spec*`."
+  `resolve-spec`."
   (fn [smap] (when (map? smap) (:clojure.spec/op smap))))
 
 (defmethod create-spec :default [o] o)
@@ -193,7 +193,7 @@
 
 (declare gensub)
 
-(defn spec*
+(defn resolve-spec
   "Returns a spec object given a fully-qualified spec op form, symbol, set,
   or registry identifier. If needed, use 'explicate' to qualify forms."
   [qform]
@@ -401,18 +401,18 @@
   "Given a literal vector or map schema, expand to a proper explicated spec
   form, which when evaluated yields a schema object."
   [& coll]
-  `(spec* '~(explicate (ns-name *ns*) `(schema ~@coll))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(schema ~@coll))))
 
 (defmacro union
   "Takes schemas and unions them, returning a schema object"
   [& schemas]
-  `(spec* '~(explicate (ns-name *ns*) `(union ~@schemas))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(union ~@schemas))))
 
 (defmacro spec
   "Given a function symbol, set of constants, or anonymous function,
   returns a spec object."
   [s]
-  `(spec* '~(explicate (ns-name *ns*) s)))
+  `(resolve-spec '~(explicate (ns-name *ns*) s)))
 
 (defn register
   "Given a namespace-qualified keyword or resolvable symbol k, and a
@@ -445,7 +445,7 @@
 (defmacro with-gen
   "Takes a spec and a no-arg, generator-returning fn and returns a version of that spec that uses that generator"
   [spec gen-fn]
-  `(spec* '~(explicate (ns-name *ns*) `(with-gen ~spec ~gen-fn))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(with-gen ~spec ~gen-fn))))
 
 (defmacro merge
   "Takes map-validating specs (e.g. 'keys' specs) and
@@ -453,7 +453,7 @@
   specs.  Unlike 'and', merge can generate maps satisfying the
   union of the predicates."
   [& pred-forms]
-  `(spec* '~(explicate (ns-name *ns*) `(merge ~@pred-forms))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(merge ~@pred-forms))))
 
 (defmacro every
   "takes a pred and validates collection elements against that pred.
@@ -486,7 +486,7 @@
   [pred & {:keys [::describe] :as opts}]
   (let [nopts (dissoc opts ::describe)
         d (c/or describe `(every ~pred ~@(mapcat identity opts)))]
-    `(spec* '~(explicate (ns-name *ns*) `(every ~pred ::describe ~d ~@(mapcat identity nopts))))))
+    `(resolve-spec '~(explicate (ns-name *ns*) `(every ~pred ::describe ~d ~@(mapcat identity nopts))))))
 
 (defmacro every-kv
   "like 'every' but takes separate key and val preds and works on associative collections.
@@ -495,7 +495,7 @@
 
   See also - map-of"
   [kpred vpred & opts]
-  `(spec* '~(explicate (ns-name *ns*) `(every-kv ~kpred ~vpred ~@opts))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(every-kv ~kpred ~vpred ~@opts))))
 
 (defmacro coll-of
   "Returns a spec for a collection of items satisfying pred. Unlike
@@ -507,7 +507,7 @@
 
   See also - every, map-of"
   [pred & opts]
-  `(spec* '~(explicate (ns-name *ns*) `(coll-of ~pred ~@opts))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(coll-of ~pred ~@opts))))
 
 (defmacro map-of
   "Returns a spec for a map whose keys satisfy kpred and vals satisfy
@@ -520,25 +520,25 @@
 
   See also - every-kv"
   [kpred vpred & opts]
-  `(spec* '~(explicate (ns-name *ns*) `(map-of ~kpred ~vpred ~@opts))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(map-of ~kpred ~vpred ~@opts))))
 
 (defmacro *
   "Returns a regex op that matches zero or more values matching
   pred. Produces a vector of matches iff there is at least one match"
   [pred-form]
-  `(spec* '~(explicate (ns-name *ns*) `(* ~pred-form))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(* ~pred-form))))
 
 (defmacro +
   "Returns a regex op that matches one or more values matching
   pred. Produces a vector of matches"
   [pred-form]
-  `(spec* '~(explicate (ns-name *ns*) `(+ ~pred-form))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(+ ~pred-form))))
 
 (defmacro ?
   "Returns a regex op that matches zero or one value matching
   pred. Produces a single value (not a collection) if matched."
   [pred-form]
-  `(spec* '~(explicate (ns-name *ns*) `(? ~pred-form))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(? ~pred-form))))
 
 (defmacro alt
   "Takes key+pred pairs, e.g.
@@ -550,7 +550,7 @@
   'key' and 'val' functions can be used to refer generically to the
   components of the tagged return"
   [& key-pred-forms]
-  `(spec* '~(explicate (ns-name *ns*) `(alt ~@key-pred-forms))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(alt ~@key-pred-forms))))
 
 (defmacro cat
   "Takes key+pred pairs, e.g.
@@ -560,28 +560,28 @@
   Returns a regex op that matches (all) values in sequence, returning a map
   containing the keys of each pred and the corresponding value."
   [& key-pred-forms]
-  `(spec* '~(explicate (ns-name *ns*) `(cat ~@key-pred-forms))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(cat ~@key-pred-forms))))
 
 (defmacro &
   "takes a regex op re, and predicates. Returns a regex-op that consumes
   input as per re but subjects the resulting value to the
   conjunction of the predicates, and any conforming they might perform."
   [re & preds]
-  `(spec* '~(explicate (ns-name *ns*) `(clojure.spec-alpha2/& ~re ~@preds))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(clojure.spec-alpha2/& ~re ~@preds))))
 
 (defmacro nest
   "takes a regex op and returns a non-regex op that describes a nested
   sequential collection."
   [re]
-  `(spec* '~(explicate (ns-name *ns*) `(nest ~re))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(nest ~re))))
 
 (defmacro conformer
   "takes a predicate function with the semantics of conform i.e. it should return either a
   (possibly converted) value or :clojure.spec-alpha2/invalid, and returns a
   spec that uses it as a predicate/conformer. Optionally takes a
   second fn that does unform of result of first"
-  ([f] `(spec* '~(explicate (ns-name *ns*) `(conformer ~f))))
-  ([f unf] `(spec* '~(explicate (ns-name *ns*) `(conformer ~f ~unf)))))
+  ([f] `(resolve-spec '~(explicate (ns-name *ns*) `(conformer ~f))))
+  ([f unf] `(resolve-spec '~(explicate (ns-name *ns*) `(conformer ~f ~unf)))))
 
 (defmacro fspec
   "takes :args :ret and (optional) :fn kwargs whose values are preds
@@ -598,7 +598,7 @@
   Optionally takes :gen generator-fn, which must be a fn of no args
   that returns a test.check generator."
   [& opts]
-  `(spec* '~(explicate (ns-name *ns*) `(fspec ~@opts))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(fspec ~@opts))))
 
 (defn- macroexpand-check
   [v args]
@@ -676,7 +676,7 @@
   Optionally takes :gen generator-fn, which must be a fn of no args that
   returns a test.check generator."
   [& ks]
-  `(spec* '~(explicate (ns-name *ns*) `(keys ~@ks))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(keys ~@ks))))
 
 (defmacro select
   "Takes a keyset and a selection pattern and returns a spec that
@@ -685,7 +685,7 @@
   pattern indicates what keys must be in the map, and any nested
   maps."
   [keyset selection]
-  `(spec* '~(explicate (ns-name *ns*) `(select ~keyset ~selection))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(select ~keyset ~selection))))
 
 (defmacro multi-spec
   "Takes the name of a spec/predicate-returning multimethod and a
@@ -714,7 +714,7 @@
   though those values are not evident in the spec.
 "
   [mm retag]
-  `(spec* '~(explicate (ns-name *ns*) `(multi-spec ~mm ~retag))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(multi-spec ~mm ~retag))))
 
 (defmacro tuple
   "takes one or more preds and returns a spec for a tuple, a vector
@@ -722,7 +722,7 @@
   will be referred to in paths using its ordinal."
   [& preds]
   (c/assert (not (empty? preds)))
-  `(spec* '~(explicate (ns-name *ns*) `(tuple ~@preds))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(tuple ~@preds))))
 
 (defmacro or
   "Takes key+pred pairs, e.g.
@@ -736,7 +736,7 @@
   [& key-pred-forms]
   (c/assert (c/and (even? (count key-pred-forms)) (->> key-pred-forms (partition 2) (map first) (every? keyword?)))
             "spec/or expects k1 p1 k2 p2..., where ks are keywords")
-  `(spec* '~(explicate (ns-name *ns*) `(or ~@key-pred-forms))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(or ~@key-pred-forms))))
 
 (defmacro and
   "Takes predicate/spec-forms, e.g.
@@ -746,7 +746,7 @@
   Returns a spec that returns the conformed value. Successive
   conformed values propagate through rest of predicates."
   [& pred-forms]
-  `(spec* '~(explicate (ns-name *ns*) `(and ~@pred-forms))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(and ~@pred-forms))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; non-primitives ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -765,18 +765,18 @@
   user=> (s/conform (s/cat :i1 integer? :m (s/keys* :req-un [::a ::c]) :i2 integer?) [42 :a 1 :c 2 :d 4 99])
   {:i1 42, :m {:a 1, :c 2, :d 4}, :i2 99}"
   [& kspecs]
-  `(spec* '~(explicate (ns-name *ns*) `(keys* ~@kspecs))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(keys* ~@kspecs))))
 
 (defmacro nonconforming
   "takes a spec and returns a spec that has the same properties except
   'conform' returns the original (not the conformed) value."
   [spec]
-  `(spec* '~(explicate (ns-name *ns*) `(nonconforming ~spec))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(nonconforming ~spec))))
 
 (defmacro nilable
   "returns a spec that accepts nil and values satisfying pred"
   [pred]
-  `(spec* '~(explicate (ns-name *ns*) `(nilable ~pred))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(nilable ~pred))))
 
 (defn exercise
   "generates a number (default 10) of values compatible with spec and maps conform over them,
@@ -897,7 +897,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
 
 (defmacro defop
   "Defines a new spec op with op-name defined by the form. Defines a macro for op-name with docstring that
-  expands to a call to spec* with the explicated form. args are replaced in the form. Creates a create-spec
+  expands to a call to resolve-spec with the explicated form. args are replaced in the form. Creates a create-spec
   method implementation for op-name that creates a spec whose body is form.
 
   Opts allowed:
@@ -923,13 +923,13 @@ set. You can toggle check-asserts? with (check-asserts bool)."
          [~'mform]
          (let [a# (:args ~'mform)
                m# (sig-map '~args a#) ;; map of arg name to arg value
-               sp# (delay (spec* (explicate '~ns-name (walk/postwalk (fn [x#] (get m# x# x#)) '~form))))]
+               sp# (delay (resolve-spec (explicate '~ns-name (walk/postwalk (fn [x#] (get m# x# x#)) '~form))))]
            (op-spec sp# (cons '~op a#) (eval (walk/postwalk (fn [x#] (get m# x# x#)) '~gen)))))
        (defmacro ~op-name
          ~@(if doc [doc] [])       ;; docstring
          {:arglists (list '~args)} ;; metadata with arglists
          [~'& ~'sargs]
-         (list `spec* (list `explicate (list `quote '~ns-name) (list `quote (cons '~op ~'sargs))))))))
+         (list `resolve-spec (list `explicate (list `quote '~ns-name) (list `quote (cons '~op ~'sargs))))))))
 
 ;; Load the spec op implementations
 (load "/clojure/spec_alpha2/impl")
