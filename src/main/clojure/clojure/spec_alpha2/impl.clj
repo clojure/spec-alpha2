@@ -50,7 +50,7 @@
 
 (defn- fn-impl
   [form gfn]
-  (let [pred (eval form)]
+  (let [pred (s/resolve-fn form)]
     (reify
       Spec
       (conform* [_ x settings-key settings]
@@ -101,15 +101,15 @@
 (defmethod s/create-spec `s/with-gen
   [{:keys [spec gen-fn]}]
   (let [spec (s/resolve-spec spec)
-        g (eval gen-fn)]
+        g (s/resolve-fn gen-fn)]
     (if (s/regex? spec)
       (assoc spec ::gfn g)
       (protocols/with-gen* spec g))))
 
 (defn- conformer-impl
   [f-form unf-form gfn]
-  (let [f (eval f-form)
-        unf (when unf-form (eval unf-form))]
+  (let [f (s/resolve-fn f-form)
+        unf (when unf-form (s/resolve-fn unf-form))]
     (reify
       protocols/Spec
       (conform* [_ x settings-key settings] (f x))
@@ -395,9 +395,9 @@
                     :req-keys req-keys :req-specs req-specs
                     :opt-keys opt-keys :opt-specs opt-specs
                     :pred-forms pred-forms
-                    :pred-exprs (mapv eval pred-exprs)
-                    :keys-pred (eval keys-pred)
-                    :gfn (eval gen)})))
+                    :pred-exprs (mapv s/resolve-fn pred-exprs)
+                    :keys-pred (s/resolve-fn keys-pred)
+                    :gfn (s/resolve-fn gen)})))
 
 (defn- keyspecs
   [schema]
@@ -984,7 +984,7 @@
    (let [gen-into (if conform-into (empty conform-into) (get empty-coll kind-form))
          spec (delay (s/resolve-spec form))
          check? #(s/valid? @spec %)
-         kfn (if kfn (eval kfn) (fn [i v] v))
+         kfn (if kfn (s/resolve-fn kfn) (fn [i v] v))
          addcv (fn [ret i v cv] (conj ret cv))
          cfns (fn [x]
                 ;;returns a tuple of [init add complete] fns
@@ -1115,9 +1115,9 @@
         cpred `(fn* [~gx] (and ~@cpreds))
         eopts (-> opts
                   (dissoc ::s/gen)
-                  (assoc ::s/cpred (eval cpred))
+                  (assoc ::s/cpred (s/resolve-fn cpred))
                   (cond->
-                    kind (assoc :kind (eval kind) ::s/kind-form kind)))]
+                    kind (assoc :kind (s/resolve-fn kind) ::s/kind-form kind)))]
     (every-impl spec eopts gen)))
 
 (defmethod s/expand-spec `s/every-kv
@@ -1629,7 +1629,7 @@
   [{:keys [args ret fn gen] :or {ret `any?}}]
   (fspec-impl (s/resolve-spec args) args
               (s/resolve-spec ret) ret
-              (s/resolve-spec fn) fn (eval gen)))
+              (s/resolve-spec fn) fn (s/resolve-fn gen)))
 
 (defn- nonconforming-impl
   ([spec]

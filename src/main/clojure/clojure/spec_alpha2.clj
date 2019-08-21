@@ -193,6 +193,11 @@
 
 (declare gensub)
 
+(defn resolve-fn
+  "Resolves a symbolic function to a function object (predicate)."
+  [fn-form]
+  (eval fn-form))
+
 (defn resolve-spec
   "Returns a spec object given a fully-qualified spec op form, symbol, set,
   or registry identifier. If needed, use 'explicate' to qualify forms."
@@ -924,7 +929,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
          (let [a# (:args ~'mform)
                m# (sig-map '~args a#) ;; map of arg name to arg value
                sp# (delay (resolve-spec (explicate '~ns-name (walk/postwalk (fn [x#] (get m# x# x#)) '~form))))]
-           (op-spec sp# (cons '~op a#) (eval (walk/postwalk (fn [x#] (get m# x# x#)) '~gen)))))
+           (op-spec sp# (cons '~op a#) (resolve-fn (walk/postwalk (fn [x#] (get m# x# x#)) '~gen)))))
        (defmacro ~op-name
          ~@(if doc [doc] [])       ;; docstring
          {:arglists (list '~args)} ;; metadata with arglists
