@@ -440,11 +440,19 @@
                    (keyword? spec-form) spec-form
                    (symbol? spec-form) `(spec ~spec-form)
                    (set? spec-form) `(spec ~spec-form)
+                   (nil? spec-form) nil ;; remove mapping
 
                    (c/or (list? spec-form) (seq? spec-form))
-                   (if (#{'fn 'fn* `c/fn} (first spec-form))
-                     `(s/spec ~spec-form)
-                     spec-form))]
+                   (let [op (first spec-form)]
+                     (cond
+                       (#{'fn 'fn* `c/fn} op) `(s/spec ~spec-form)
+                       (contains? (-> #'create-spec deref methods c/keys set) (ns-qualify op)) spec-form
+                       :else (throw (ex-info (str "Unable to def " k ", unknown spec op: " (ns-qualify op))
+                                      {:k k :form spec-form}))))
+
+                   :else
+                   (throw (ex-info (str "Unable to def " k ", invalid spec definition: " (pr-str spec-form))
+                            {:k k :form spec-form})))]
     `(register '~k ~spec-def)))
 
 (defmacro with-gen
