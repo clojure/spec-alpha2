@@ -278,11 +278,10 @@
   (apply gen/tuple (map k-gen s)))
 
 (defn- map-spec-impl
-  "Do not call this directly, use 'spec' with a map argument"
+  "Do not call this directly, use 'keys'"
   [{:keys [req-un opt-un keys-pred pred-exprs opt-keys req-specs req req-keys opt-specs pred-forms opt gfn]
     :as argm}]
-  (let [k->s (zipmap (concat req-keys opt-keys) (concat req-specs opt-specs))
-        keys->specnames #(or (k->s %) %)
+  (let [keys->specnames (zipmap (concat req-keys opt-keys) (concat req-specs opt-specs))
         id (java.util.UUID/randomUUID)]
     (reify
       Spec

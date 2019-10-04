@@ -44,6 +44,7 @@
         opt (s/? keyword?)
         andre (s/& (s/* keyword?) even-count?)
         andre2 (s/& (s/* keyword?) #{[:a]})
+        me (s/keys)
         m (s/map-of keyword? string?)
         mkeys (s/map-of (s/and keyword? (s/conformer name)) any?)
         mkeys2 (s/map-of (s/and keyword? (s/conformer name)) any? :conform-keys true)
@@ -153,6 +154,11 @@
       ::mu {} ::s/invalid '[{:pred (clojure.core/fn [%] (clojure.core/contains? % :mk1)), :val {}}]
       ::mu {:mk1 :bad} ::s/invalid '[{:pred clojure.core/int?, :val :bad, :path [:mk1], :in [:mk1]}]
       ::mu {:mk1 100} {:mk1 100} nil
+
+      me nil ::s/invalid '[{:pred clojure.core/map?, :val nil}]
+      me {} {} nil
+      me {::a 1} {::a 1} nil
+      me {"a" 1} {"a" 1} nil
 
       m nil ::s/invalid '[{:pred clojure.core/map?, :val nil}]
       m {} {} nil
