@@ -120,7 +120,7 @@ failure in instrument."
                        (let [caller (->> (.getStackTrace (Thread/currentThread))
                                          stacktrace-relevant-to-instrument
                                          first)
-                             ed (merge (assoc (s/explain-data* spec [] [] [] data)
+                             ed (merge (assoc (s/explain-data* spec [] [] [] data nil nil)
                                          ::sa/fn (symbol v)
                                          ::sa/args args
                                          ::sa/failure :instrument)
@@ -275,7 +275,7 @@ Returns a collection of syms naming the vars unstrumented."
   (ex-info
    "Specification-based check failed"
    (when-not (s/valid? spec v)
-     (let [ed (s/explain-data* spec [role] [] [] v)]
+     (let [ed (s/explain-data* spec [role] [] [] v nil nil)]
        (if (nil? ed)
          {::args args
           ::val v
