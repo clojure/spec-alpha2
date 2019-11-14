@@ -41,7 +41,7 @@
 (let [g? (c/delay (dynaload 'clojure.test.check.generators/generator?))
       g (c/delay (dynaload 'clojure.test.check.generators/generate))
       mkg (c/delay (dynaload 'clojure.test.check.generators/->Generator))]
-  (defn- generator?
+  (defn generator?
     [x]
     (@g? x))
   (defn- generator
