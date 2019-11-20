@@ -1614,7 +1614,7 @@
                                     (assert (pvalid? argspec args) (with-out-str (s/explain argspec args)))
                                     (gen/generate (s/gen retspec overrides))))))
       (with-gen* [_ gfn] (fspec-impl argspec aform retspec rform fnspec fform gfn))
-      (describe* [_] `(fspec :args ~(resolve-form aform) :ret ~(resolve-form rform) :fn ~(resolve-form fform))))))
+      (describe* [_] `(s/fspec :args ~(resolve-form aform) :ret ~(resolve-form rform) :fn ~(resolve-form fform))))))
 
 (defmethod s/expand-spec `s/fspec
   [[_ & {:keys [args ret fn gen]}]]
