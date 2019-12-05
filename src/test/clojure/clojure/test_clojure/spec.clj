@@ -36,6 +36,7 @@
 
 (deftest conform-explain
   (let [a (s/and #(> % 5) #(< % 10))
+        a- (s/and- (s/cat :i int?) #(pos? (first %)))
         o (s/or :s string? :k keyword?)
         c (s/cat :a string? :b keyword?)
         either (s/alt :a string? :b keyword?)
@@ -93,6 +94,11 @@
       a 20 ::s/invalid '[{:pred (fn [%] (clojure.core/< % 10)), :val 20}]
       a nil "java.lang.NullPointerException" "java.lang.NullPointerException"
       a :k "java.lang.ClassCastException" "java.lang.ClassCastException"
+
+      a- [1] {:i 1} nil
+      a- [] ::s/invalid '[{:val (), :pred clojure.core/int?, :reason "Insufficient input"}]
+      a- [-1] ::s/invalid '[{:val [-1], :pred (fn [%] (clojure.core/pos? (clojure.core/first %)))}]
+      a- :k ::s/invalid '[{:val :k, :pred (fn [%] (clojure.core/or (clojure.core/nil? %) (clojure.core/sequential? %)))}]
 
       o "a" [:s "a"] nil
       o :a [:k :a] nil

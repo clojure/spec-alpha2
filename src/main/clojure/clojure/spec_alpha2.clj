@@ -754,12 +754,23 @@
 (defmacro and
   "Takes predicate/spec-forms, e.g.
 
-  (s/and even? #(< % 42))
+  (s/and int? even? #(< % 42))
 
   Returns a spec that returns the conformed value. Successive
   conformed values propagate through rest of predicates."
   [& pred-forms]
   `(resolve-spec '~(explicate (ns-name *ns*) `(and ~@pred-forms))))
+
+(defmacro and-
+  "Takes predicate/spec-forms, e.g.
+
+  (s/and- (s/cat :i int?) #(pos? (first %)))
+
+  Returns a spec that validates all preds on and returns the conformed value of
+  the first pred. Conformed values are NOT propagated through rest of predicates."
+  [& pred-forms]
+  `(resolve-spec '~(explicate (ns-name *ns*) `(and- ~@pred-forms))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; non-primitives ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

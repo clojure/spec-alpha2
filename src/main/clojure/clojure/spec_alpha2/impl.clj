@@ -628,14 +628,6 @@
   (assert (vector? selection))
   (select-impl schema selection nil))
 
-(comment
-  (s/def ::k1 int?)
-  (s/def ::k2 keyword?)
-
-  (s/conform (s/select [::k1 ::k2] [*]) {::k1 1})
-
-  )
-
 (defn- nest-impl
   [re-form gfn]
   (let [spec (delay (s/resolve-spec re-form))]
@@ -913,6 +905,62 @@
 (defmethod s/create-spec `s/and
   [{:keys [specs]}]
   (and-spec-impl specs nil))
+
+(defn- explain-pred-list-nonflowing
+  [forms preds path via in x settings-key settings]
+  (loop [[form & forms] forms
+         [pred & preds] preds]
+    (when pred
+      (let [nret (dt pred x form)]
+        (if (s/invalid? nret)
+          (explain-1 form pred path via in x settings-key settings)
+          (recur forms preds))))))
+
+(defn- and-nonflowing
+  "Do not call this directly, use 'and-'"
+  [forms gfn]
+  (let [specs (delay (mapv s/resolve-spec forms))]
+    (reify
+      Spec
+      (conform* [_ x settings-key settings]
+        (let [specs @specs]
+          (if (seq specs)
+            (let [ret (conform* (specs 0) x settings-key settings)]
+              (if (s/invalid? ret)
+                ::s/invalid
+                (loop [i 1]
+                  (if (< i (count specs))
+                    (if (s/invalid? (conform* (specs i) x settings-key settings))
+                      ::s/invalid
+                      (recur (inc i)))
+                    ret))))
+            x)))
+      (unform* [_ x]
+        (let [specs @specs]
+          (if (seq specs)
+            (s/unform (first specs) x)
+            x)))
+      (explain* [_ path via in x settings-key settings]
+        (let [specs @specs]
+          (explain-pred-list-nonflowing (map s/form specs) specs path via in x settings-key settings)))
+      (gen* [_ overrides path rmap]
+        (if gfn
+          (gfn)
+          (let [specs @specs]
+            (if (seq specs)
+              (#'s/gensub (first specs) overrides path rmap (first forms))
+              (#'s/gensub (s/resolve-spec `any?) overrides path rmap `any?)))))
+      (with-gen* [_ gfn] (and-nonflowing forms gfn))
+      (describe* [_] `(s/and- ~@(resolve-forms forms))))))
+
+(defmethod s/expand-spec `s/and-
+  [[_ & pred-forms]]
+  {:clojure.spec/op `s/and-
+   :specs (vec pred-forms)})
+
+(defmethod s/create-spec `s/and-
+  [{:keys [specs]}]
+  (and-nonflowing specs nil))
 
 (defn- merge-spec-impl
   "Do not call this directly, use 'merge'"
