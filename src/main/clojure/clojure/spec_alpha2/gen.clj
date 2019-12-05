@@ -123,8 +123,9 @@
   "Returns a generator of a sequence catenated from results of
 gens, each of which should generate something sequential."
   [& gens]
-  (fmap #(apply concat %)
-        (apply tuple gens)))
+  (fmap (fn [[constructor & vs]]
+          (constructor (apply concat vs)))
+    (apply tuple (cons (elements [list* vec]) gens))))
 
 (defn- qualified? [ident] (not (nil? (namespace ident))))
 
