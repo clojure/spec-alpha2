@@ -1232,10 +1232,16 @@
      re-obj
      {`protocols/conform* (fn [re x settings-key settings]
                             (if (or (nil? x) (sequential? x))
-                              (re-conform re (seq x))
+                              (let [ret (re-conform re (seq x))]
+                                (if (and (vector? x) (map? ret))
+                                  (with-meta ret {::s/into []})
+                                  ret))
                               ::s/invalid))
       `protocols/unform* (fn [re x]
-                           (op-unform re x))
+                           (let [ret (op-unform re x)]
+                             (if (= (-> x meta ::s/into) [])
+                               (vec ret)
+                               ret)))
       `protocols/explain* (fn [re path via in x settings-key settings]
                             (if (or (nil? x) (sequential? x))
                               (re-explain path via in re (seq x) settings-key settings)
