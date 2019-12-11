@@ -7,7 +7,7 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns clojure.spec-alpha2
-  (:refer-clojure :exclude [+ * and assert or cat def keys merge])
+  (:refer-clojure :exclude [+ * and assert or cat def keys merge comp])
   (:require [clojure.spec-alpha2.protocols :as protocols
              :refer [conform* unform* explain* gen* with-gen* describe*]]
             [clojure.walk :as walk]
@@ -905,6 +905,40 @@ set. You can toggle check-asserts? with (check-asserts bool)."
                     distinct
                     vec)]
     (zipmap locals (eval `(let [~sig ~(vec vals)] ~locals)))))
+
+(defmacro defcompop
+  "Defines a new composite spec with op-name and args same as spec-op.
+  The new spec takes the same args as spec-op, and also ensures the preds
+  are satisfied."
+  {:arglists '([op-name doc-string? spec-op preds+])}
+  [op-name & tail]
+  (let [[doc spec-op & preds] (if (string? (first tail)) tail (cons nil tail))
+        ns-name (ns-name *ns*)
+        op (symbol (name ns-name) (name op-name))]
+    (c/assert (pos? (count preds)) "defcompop should have at least one pred")
+    `(do
+       (defmethod expand-spec '~op
+         [[~'_ ~'& ~'sargs]]
+         (let [os# '~op]
+           {:clojure.spec/op os#
+            :primary '~(explicate ns-name spec-op)
+            :preds '~(explicate ns-name preds)
+            :args ~'sargs}))
+       (defmethod create-spec '~op
+         [~'mform]
+         (let [primary# (:primary ~'mform)
+               preds# (:preds ~'mform)
+               a# (:args ~'mform)
+               comp-spec# (concat (list `s/and- (cons '~(explicate ns-name spec-op) a#)) preds#)]
+           (resolve-spec comp-spec#)))
+       (defmacro ~op-name
+         ~@(if doc [doc] [])
+         {:arglists '~(:arglists (meta (find-var (explicate ns-name spec-op))))}
+         [~'& ~'sargs]
+         (list `resolve-spec (list `explicate (list `quote '~ns-name) (list `quote (cons '~op ~'sargs))))))))
+
+(defcompop catv "Like s/cat, but constrain to only vectors" cat vector?)
+(defcompop cats "Like s/cat, but constrain to only seqs" cat seq?)
 
 (defn ^:skip-wiki op-spec
   "Do not call directly, use `defop`"
