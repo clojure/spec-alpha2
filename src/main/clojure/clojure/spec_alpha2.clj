@@ -926,7 +926,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
 
   Opts allowed:
    :gen - takes a no-arg function returning a generator to use"
-  {:arglists '([op-name doc-string? opts? form])}
+  {:arglists '([op-name doc-string? opts? [params*] form])}
   [op-name & op-tail]
   (let [form (last op-tail)
         opts (butlast op-tail)
