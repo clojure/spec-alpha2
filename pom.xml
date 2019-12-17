@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>spec-alpha2</artifactId>
+  <artifactId>alpha.spec</artifactId>
   <version>0.2.177-SNAPSHOT</version>
-  <name>spec-alpha2</name>
+  <name>alpha.spec</name>
   <description>Specification of data and functions</description>
 
   <scm>
@@ -74,11 +74,11 @@
                 <argument>-classpath</argument>
                 <classpath />
                 <argument>clojure.lang.Compile</argument>
-                <argument>clojure.spec-alpha2.protocols</argument>
-                <argument>clojure.spec-alpha2</argument>
-                <argument>clojure.spec-alpha2.impl</argument>
-                <argument>clojure.spec-alpha2.gen</argument>
-                <argument>clojure.spec-alpha2.test</argument>
+                <argument>clojure.alpha.spec.protocols</argument>
+                <argument>clojure.alpha.spec</argument>
+                <argument>clojure.alpha.spec.impl</argument>
+                <argument>clojure.alpha.spec.gen</argument>
+                <argument>clojure.alpha.spec.test</argument>
               </arguments>
             </configuration>
           </execution>

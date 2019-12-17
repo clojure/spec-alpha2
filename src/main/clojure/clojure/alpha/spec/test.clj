@@ -6,16 +6,16 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec-alpha2.test
+(ns clojure.alpha.spec.test
   (:refer-clojure :exclude [test])
   (:require
    [clojure.pprint :as pp]
-   [clojure.spec-alpha2 :as s]
-   [clojure.spec-alpha2.gen :as gen]
+   [clojure.alpha.spec :as s]
+   [clojure.alpha.spec.gen :as gen]
    [clojure.string :as str]))
 
 (in-ns 'clojure.spec.test.check)
-(in-ns 'clojure.spec-alpha2.test)
+(in-ns 'clojure.alpha.spec.test)
 (alias 'stc 'clojure.spec.test.check)
 (alias 'sa 'clojure.spec.alpha)
 
@@ -104,7 +104,7 @@ interpret-stack-trace-element that are relevant to a
 failure in instrument."
   [elems]
   (let [plumbing? (fn [{:keys [var-scope]}]
-                    (contains? '#{clojure.spec-alpha2.test/spec-checking-fn} var-scope))]
+                    (contains? '#{clojure.alpha.spec.test/spec-checking-fn} var-scope))]
     (sequence (comp (map StackTraceElement->vec)
                     (map interpret-stack-trace-element)
                     (filter :var-scope)
@@ -113,7 +113,7 @@ failure in instrument."
 
 (defn- spec-checking-fn
   [v f fn-spec]
-  (let [fn-spec (@#'clojure.spec-alpha2.impl/maybe-spec fn-spec)
+  (let [fn-spec (@#'clojure.alpha.spec.impl/maybe-spec fn-spec)
         conform! (fn [v role spec data args]
                    (let [conformed (s/conform spec data)]
                      (if (= ::s/invalid conformed)

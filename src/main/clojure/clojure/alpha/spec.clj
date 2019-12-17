@@ -13,13 +13,13 @@
 
   Rationale: https://clojure.org/about/spec
   Guide: https://clojure.org/guides/spec"}
-  clojure.spec-alpha2
+  clojure.alpha.spec
   (:refer-clojure :exclude [+ * and assert or cat def keys merge comp])
-  (:require [clojure.spec-alpha2.protocols :as protocols
+  (:require [clojure.alpha.spec.protocols :as protocols
              :refer [conform* unform* explain* gen* with-gen* describe*]]
             [clojure.walk :as walk]
-            [clojure.spec-alpha2.gen :as gen])
-  (:import [clojure.spec_alpha2.protocols Spec Schema]))
+            [clojure.alpha.spec.gen :as gen])
+  (:import [clojure.alpha.spec.protocols Spec Schema]))
 
 (alias 'c 'clojure.core)
 (alias 'sa 'clojure.spec.alpha)
@@ -235,7 +235,7 @@
     :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
 
 (defn conform
-  "Given a spec and a value, returns :clojure.spec-alpha2/invalid
+  "Given a spec and a value, returns :clojure.alpha.spec/invalid
 	if value does not match spec, else the (possibly destructured) value."
   ([spec x]
     (conform spec x nil))
@@ -587,7 +587,7 @@
   input as per re but subjects the resulting value to the
   conjunction of the predicates, and any conforming they might perform."
   [re & preds]
-  `(resolve-spec '~(explicate (ns-name *ns*) `(clojure.spec-alpha2/& ~re ~@preds))))
+  `(resolve-spec '~(explicate (ns-name *ns*) `(clojure.alpha.spec/& ~re ~@preds))))
 
 (defmacro nest
   "takes a regex op and returns a non-regex op that describes a nested
@@ -597,7 +597,7 @@
 
 (defmacro conformer
   "takes a predicate function with the semantics of conform i.e. it should return either a
-  (possibly converted) value or :clojure.spec-alpha2/invalid, and returns a
+  (possibly converted) value or :clojure.alpha.spec/invalid, and returns a
   spec that uses it as a predicate/conformer. Optionally takes a
   second fn that does unform of result of first"
   ([f] `(resolve-spec '~(explicate (ns-name *ns*) `(conformer ~f))))
@@ -648,7 +648,7 @@
   by calling get-spec with the var or fully-qualified symbol.
 
   Once registered, function specs are included in doc, checked by
-  instrument, tested by the runner clojure.spec-alpha2.test/check, and (if
+  instrument, tested by the runner clojure.alpha.spec.test/check, and (if
   a macro) used to explain errors during macroexpansion.
 
   Note that :fn specs require the presence of :args and :ret specs to
@@ -665,7 +665,7 @@
                  :sym symbol?)
     :ret symbol?)"
   [fn-sym & specs]
-  `(clojure.spec-alpha2/def ~fn-sym (clojure.spec-alpha2/fspec ~@specs)))
+  `(clojure.alpha.spec/def ~fn-sym (clojure.alpha.spec/fspec ~@specs)))
 
 (defmacro keys
   "Creates and returns a map validating spec. :req and :opt are both
@@ -963,7 +963,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
          (list `resolve-spec (list `explicate (list `quote '~ns-name) (list `quote (cons '~op ~'sargs))))))))
 
 ;; Load the spec op implementations
-(load "/clojure/spec_alpha2/impl")
+(load "/clojure/alpha/spec/impl")
 
 ;; Derived ops
 
@@ -971,15 +971,15 @@ set. You can toggle check-asserts? with (check-asserts bool)."
   "Returns a spec that validates insts in the range from start
   (inclusive) to end (exclusive)."
   [start end]
-  :gen #(clojure.spec-alpha2.gen/fmap (fn [^long d] (java.util.Date. d))
-         (clojure.spec-alpha2.gen/large-integer* {:min (inst-ms start) :max (inst-ms end)}))
+  :gen #(clojure.alpha.spec.gen/fmap (fn [^long d] (java.util.Date. d))
+         (clojure.alpha.spec.gen/large-integer* {:min (inst-ms start) :max (inst-ms end)}))
   (and inst? #(inst-in-range? start end %)))
 
 (defop int-in
   "Returns a spec that validates fixed precision integers in the
   range from start (inclusive) to end (exclusive)."
   [start end]
-  :gen #(clojure.spec-alpha2.gen/large-integer* {:min start :max (dec end)})
+  :gen #(clojure.alpha.spec.gen/large-integer* {:min start :max (dec end)})
   (and int? #(int-in-range? start end %)))
 
 (defop double-in
@@ -990,7 +990,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
     :min       - minimum value (inclusive, default none)
     :max       - maximum value (inclusive, default none)"
   [& {:keys [infinite? NaN? min max :as m]}]
-  :gen #(clojure.spec-alpha2.gen/double* m)
+  :gen #(clojure.alpha.spec.gen/double* m)
   (and double?
        #(if-not infinite? (not (Double/isInfinite %)))
        #(if-not NaN? (not (Double/isNaN %)))
@@ -1020,7 +1020,7 @@ set. You can toggle check-asserts? with (check-asserts bool)."
          (let [primary# (:primary ~'mform)
                preds# (:preds ~'mform)
                a# (:args ~'mform)
-               comp-spec# (concat (list 'clojure.spec-alpha2/and- (cons '~(explicate ns-name spec-op) a#)) preds#)]
+               comp-spec# (concat (list 'clojure.alpha.spec/and- (cons '~(explicate ns-name spec-op) a#)) preds#)]
            (resolve-spec comp-spec#)))
        (defmacro ~op-name
          ~@(if doc [doc] [])

@@ -6,7 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec-alpha2.protocols)
+(ns clojure.alpha.spec.protocols)
 
 (defprotocol Spec
   :extend-via-metadata true

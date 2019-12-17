@@ -7,14 +7,14 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:skip-wiki true}
-  clojure.spec-alpha2.impl
+  clojure.alpha.spec.impl
   (:require
-    [clojure.spec-alpha2 :as s]
-    [clojure.spec-alpha2.protocols :as protocols
+    [clojure.alpha.spec :as s]
+    [clojure.alpha.spec.protocols :as protocols
      :refer [Spec conform* unform* explain* gen* with-gen* describe*
              Schema keyspecs*
              Select]]
-    [clojure.spec-alpha2.gen :as gen]
+    [clojure.alpha.spec.gen :as gen]
     [clojure.set :as set]
     [clojure.walk :as walk]))
 
@@ -193,13 +193,13 @@
   (assert (and (= (count keys) (count specs)) (every? keyword? keys)) "cat expects k1 p1 k2 p2..., where ks are keywords")
   (cat-impl keys (mapv s/resolve-spec specs) specs))
 
-(defmethod s/expand-spec 'clojure.spec-alpha2/&
+(defmethod s/expand-spec 'clojure.alpha.spec/&
   [[_ re & preds]]
-  {:clojure.spec/op 'clojure.spec-alpha2/&
+  {:clojure.spec/op 'clojure.alpha.spec/&
    :spec re
    :preds (vec preds)})
 
-(defmethod s/create-spec 'clojure.spec-alpha2/&
+(defmethod s/create-spec 'clojure.alpha.spec/&
   [{:keys [spec preds]}]
   (amp-impl (s/resolve-spec spec) spec (mapv s/resolve-spec preds) (mapv #'s/unfn preds)))
 
@@ -1441,7 +1441,7 @@
       (case op
         ::s/accept nil
         nil p
-        ::s/amp (list* 'clojure.spec-alpha2/& (resolve-form amp) (resolve-forms forms))
+        ::s/amp (list* 'clojure.alpha.spec/& (resolve-form amp) (resolve-forms forms))
         ::s/pcat (if rep+
                  (list `s/+ rep+)
                  (cons `s/cat (mapcat vector (or (seq ks) (repeat :_)) (resolve-forms forms))))

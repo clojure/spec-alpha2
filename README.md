@@ -1,4 +1,4 @@
-spec-alpha2
+alpha.spec
 ========================================
 
 spec is a Clojure library to describe the structure of data and functions. Specs can be used to validate data, conform (destructure) data, explain invalid data, generate examples that conform to the specs, and automatically use generative testing to test functions.
@@ -8,13 +8,13 @@ For more information:
 * Rationale - https://clojure.org/about/spec
 * Guide - https://clojure.org/guides/spec (for spec.alpha, note namespaces and other differences below)
 
-spec.alpha was released with Clojure 1.9 and can be found at https://github.com/clojure/spec.alpha. spec-alpha2 incorporates feedback from spec.alpha as well as work towards several new features. Please note that spec-alpha2 is not 100% API-compatible with spec.alpha (although it is similar).
+spec.alpha was released with Clojure 1.9 and can be found at https://github.com/clojure/spec.alpha. This library is an evolution from spec.alpha as well as work towards several new features. Please note that alpha.spec is not 100% API-compatible with spec.alpha (although it is similar).
 
 Namespaces to load:
 
-    (require '[clojure.spec-alpha2 :as s]
-             '[clojure.spec-alpha2.gen :as gen]
-             '[clojure.spec-alpha2.test :as test])
+    (require '[clojure.alpha.spec :as s]
+             '[clojure.alpha.spec :as gen]
+             'iclojure.alpha.spec.test :as test])
 
 Also see: [Differences from spec.alpha](https://github.com/clojure/spec-alpha2/wiki/Differences-from-spec.alpha)
 
@@ -24,12 +24,12 @@ Releases and Dependency Information
 
 Development release:
 
-During development, you can use the git dep to try spec-alpha2:
+During development, you can use the git dep to try alpha.spec:
 
-    clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.10.0"}
+    clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.10.1"}
                         org.clojure/test.check {:mvn/version "0.9.0"} 
-                        org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git" 
-                                                 :sha "<SHA>"}}}'
+                        org.clojure/alpha.spec {:git/url "https://github.com/clojure/spec-alpha2.git" 
+                                                :sha "<SHA>"}}}'
 
 Where the latest SHA can be found with:
 
