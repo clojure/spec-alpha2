@@ -6,7 +6,14 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns clojure.spec-alpha2
+(ns
+  ^{:doc "The spec library specifies the structure of data or functions and provides
+  operations to validate, conform, explain, describe, and generate data based on
+  the specs.
+
+  Rationale: https://clojure.org/about/spec
+  Guide: https://clojure.org/guides/spec"}
+  clojure.spec-alpha2
   (:refer-clojure :exclude [+ * and assert or cat def keys merge comp])
   (:require [clojure.spec-alpha2.protocols :as protocols
              :refer [conform* unform* explain* gen* with-gen* describe*]]
