@@ -13,7 +13,7 @@ spec.alpha was released with Clojure 1.9 and can be found at https://github.com/
 Namespaces to load:
 
     (require '[clojure.alpha.spec :as s]
-             '[clojure.alpha.spec :as gen]
+             '[clojure.alpha.spec.gen :as gen]
              '[clojure.alpha.spec.test :as test])
 
 Also see: [Differences from spec.alpha](https://github.com/clojure/spec-alpha2/wiki/Differences-from-spec.alpha)
