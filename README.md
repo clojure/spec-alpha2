@@ -14,7 +14,7 @@ Namespaces to load:
 
     (require '[clojure.alpha.spec :as s]
              '[clojure.alpha.spec :as gen]
-             'iclojure.alpha.spec.test :as test])
+             '[clojure.alpha.spec.test :as test])
 
 Also see: [Differences from spec.alpha](https://github.com/clojure/spec-alpha2/wiki/Differences-from-spec.alpha)
 
