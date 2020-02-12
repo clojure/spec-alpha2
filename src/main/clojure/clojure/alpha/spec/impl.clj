@@ -507,7 +507,10 @@
       (explain* [_ path via in x settings-key settings] (explain* impl path via in x settings-key settings))
       (gen* [_ overrides path rmap] (gen* impl overrides path rmap))
       (with-gen* [_ gfn] (union-impl schemas gfn))
-      (describe* [_] `(s/union ~@schemas)))))
+      (describe* [_] `(s/union ~@schemas))
+
+      Schema
+      (keyspecs* [_] (keyspecs* impl)))))
 
 (defmethod s/expand-spec `s/union
   [[_ & schemas]]
