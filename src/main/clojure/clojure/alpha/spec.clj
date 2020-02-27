@@ -450,12 +450,13 @@
                    (nil? spec-form) nil ;; remove mapping
 
                    (c/or (list? spec-form) (seq? spec-form))
-                   (let [op (first spec-form)]
+                   (let [explicated-form (explicate (ns-name *ns*) spec-form)
+                         op (first explicated-form)]
                      (cond
-                       (#{'fn 'fn* `c/fn} op) `(s/spec ~spec-form)
-                       (contains? (-> #'create-spec deref methods c/keys set) (ns-qualify op)) spec-form
-                       :else (throw (ex-info (str "Unable to def " k ", unknown spec op: " (ns-qualify op))
-                                      {:k k :form spec-form}))))
+                       (#{'fn 'fn* `c/fn} op) `(s/spec ~explicated-form)
+                       (contains? (-> #'create-spec deref methods c/keys set) op) explicated-form
+                       :else (throw (ex-info (str "Unable to def " k ", unknown spec op: " op)
+                                      {:k k :form explicated-form}))))
 
                    :else
                    (throw (ex-info (str "Unable to def " k ", invalid spec definition: " (pr-str spec-form))
