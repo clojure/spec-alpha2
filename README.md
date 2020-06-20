@@ -22,7 +22,7 @@ Also see: [Differences from spec.alpha](https://github.com/clojure/spec-alpha2/w
 Releases and Dependency Information
 ========================================
 
-Development release:
+This library is a work in progress provided to gather feedback during development. Namespaces, apis, etc may change without warning. The HEAD may not always be stable (although it usually is).
 
 During development, you can use the git dep to try alpha.spec:
 
@@ -35,27 +35,7 @@ Where the latest SHA can be found with:
 
     git ls-remote https://github.com/clojure/spec-alpha2.git refs/heads/master
 
-
-Latest stable release: TBD
-
-* [All Released Versions](http://search.maven.org/#search%7Cgav%7C1%7Cg%3A%22org.clojure%22%20AND%20a%3A%22spec-alpha2%22)
-* [Development Snapshot Versions](https://oss.sonatype.org/index.html#nexus-search;gav~org.clojure~spec-alpha2~~~)
-
-[deps.edn](https://clojure.org/guides/deps_and_cli) dependency information:
-
-    org.clojure/spec-alpha2 {:mvn/version "TBD"}
-
-[Leiningen](https://github.com/technomancy/leiningen) dependency information:
-
-    [org.clojure/spec-alpha2 "TBD"]
-
-[Maven](http://maven.apache.org/) dependency information:
-
-    <dependency>
-      <groupId>org.clojure</groupId>
-      <artifactId>spec-alpha2</artifactId>
-      <version>TBD</version>
-    </dependency>
+When we believe this library is ready for use, we will begin publishing releases to Maven central.
 
 Developer Information
 ========================================
@@ -70,4 +50,4 @@ Developer Information
 Copyright and License
 ========================================
 
-Copyright (c) Rich Hickey, and contributors, 2018. All rights reserved.  The use and distribution terms for this software are covered by the Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php) which can be found in the file epl-v10.html at the root of this distribution. By using this software in any fashion, you are agreeing to be bound bythe terms of this license.  You must not remove this notice, or any other, from this software.
+Copyright (c) Rich Hickey, and contributors, 2018-2020. All rights reserved.  The use and distribution terms for this software are covered by the Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php) which can be found in the file epl-v10.html at the root of this distribution. By using this software in any fashion, you are agreeing to be bound bythe terms of this license.  You must not remove this notice, or any other, from this software.
