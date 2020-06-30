@@ -94,7 +94,7 @@
 
 (lazy-combinators hash-map list map not-empty set vector vector-distinct vector-distinct-by fmap elements
                   bind choose fmap one-of such-that tuple sample return
-                  large-integer* double* frequency shuffle)
+                  large-integer* double* frequency shuffle scale)
 
 (defmacro ^:skip-wiki lazy-prim
   "Implementation macro, do not call directly."
