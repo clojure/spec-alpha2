@@ -644,7 +644,7 @@
           (gfn)
           (gen* @spec overrides path rmap)))
       (with-gen* [_ gfn] (nest-impl re-form gfn))
-      (describe* [_] `(s/nest ~(describe* ~(resolve-form re-form)))))))
+      (describe* [_] `(s/nest ~(resolve-form re-form))))))
 
 (defmethod s/expand-spec `s/nest
   [[_ re]]
