@@ -453,7 +453,7 @@
                    (let [explicated-form (explicate (ns-name *ns*) spec-form)
                          op (first explicated-form)]
                      (cond
-                       (#{'fn 'fn* `c/fn} op) `(s/spec ~explicated-form)
+                       (#{'fn 'fn* `c/fn} op) `(spec ~explicated-form)
                        (contains? (-> #'create-spec deref methods c/keys set) op) explicated-form
                        :else (throw (ex-info (str "Unable to def " k ", unknown spec op: " op)
                                       {:k k :form explicated-form}))))
