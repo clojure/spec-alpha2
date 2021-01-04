@@ -342,9 +342,9 @@
 
 (defn explain-str
   "Given a spec and a value that fails to conform, returns an explanation as a string."
-  ([spec x]
+  (^String [spec x]
    (explain-str spec x nil))
-  ([spec x settings]
+  (^String [spec x settings]
    (with-out-str (explain spec x settings))))
 
 (defn valid?
