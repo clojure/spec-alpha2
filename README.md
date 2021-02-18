@@ -40,14 +40,14 @@ When we believe this library is ready for use, we will begin publishing releases
 Developer Information
 ========================================
 
-* [API docs](http://clojure.github.io/spec-alpha2/)
+* [API docs](https://clojure.github.io/spec-alpha2/)
 * [GitHub project](https://github.com/clojure/spec-alpha2)
 * [Changelog](https://github.com/clojure/spec-alpha2/blob/master/CHANGES.md)
-* [Bug Tracker](http://dev.clojure.org/jira/browse/CLJ)
-* [Continuous Integration](http://build.clojure.org/job/spec-alpha2/)
-* [Compatibility Test Matrix](http://build.clojure.org/job/spec-alpha2-test-matrix/)
+* [Bug Tracker](https://clojure.atlassian.net/browse/CLJ)
+* [Continuous Integration](https://build.clojure.org/job/spec-alpha2/)
+* [Compatibility Test Matrix](https://build.clojure.org/job/spec-alpha2-test-matrix/)
 
 Copyright and License
 ========================================
 
-Copyright (c) Rich Hickey, and contributors, 2018-2020. All rights reserved.  The use and distribution terms for this software are covered by the Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php) which can be found in the file epl-v10.html at the root of this distribution. By using this software in any fashion, you are agreeing to be bound bythe terms of this license.  You must not remove this notice, or any other, from this software.
+Copyright (c) Rich Hickey, and contributors, 2018-2020. All rights reserved.  The use and distribution terms for this software are covered by the Eclipse Public License 1.0 (https://opensource.org/licenses/eclipse-1.0.php) which can be found in the file epl-v10.html at the root of this distribution. By using this software in any fashion, you are agreeing to be bound bythe terms of this license.  You must not remove this notice, or any other, from this software.
