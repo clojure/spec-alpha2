@@ -302,7 +302,9 @@
   ;; map schema, unqualified keys only
   (let [spk (prot/keyspecs* (s/schema {:a int?}))]
     (is (= (keys spk) [:a]))
-    (is (= `int? (s/form (get spk :a))))))
+    (is (= `int? (s/form (get spk :a)))))
+
+  (is (= (s/form (s/schema* [{:a `string?}])) (s/form (s/schema* {:a `string?})))))
 
 (deftest describing-evaled-specs
   (let [sp (s/spec #{1 2})]
