@@ -283,6 +283,9 @@
     (s/union [::k1 ::k2] {:a int? :b keyword?})
     '(clojure.alpha.spec/union [:clojure.test-clojure.spec/k1 :clojure.test-clojure.spec/k2] {:a clojure.core/int? :b clojure.core/keyword?})
 
+    (s/union [::k1 ::k2] (s/union {:a int?} {:b keyword?}))
+    '(clojure.alpha.spec/union [:clojure.test-clojure.spec/k1 :clojure.test-clojure.spec/k2] (clojure.alpha.spec/union {:a clojure.core/int?} {:b clojure.core/keyword?}))
+
     (s/select [] [::k1 ::k2])
     '(clojure.alpha.spec/select [] [:clojure.test-clojure.spec/k1 :clojure.test-clojure.spec/k2])
 

@@ -230,7 +230,7 @@
     (keyword? sform) (reg-resolve! sform)
     (vector? sform) (create-spec `{:clojure.spec/op schema, :schema ~sform})
     (map? sform) (create-spec `{:clojure.spec/op schema, :schema [~sform]})
-    (c/or (list? sform) (seq? sform)) (create-spec sform)
+    (c/or (list? sform) (seq? sform)) (-> sform expand-spec create-spec)
     (nil? sform) nil
     :else (throw (IllegalArgumentException. (str "Unknown schema op of type: " (class sform))))))
 
