@@ -68,6 +68,11 @@ returns the set of all symbols naming vars in those nses."
   `(binding [*instrument-enabled* nil]
      ~@body))
 
+(def ^:private kvs-emu-name "--KVS--EMULATION--THUNK--")
+
+(defn- thunk-frame? [s]
+  (str/includes? s kvs-emu-name))
+
 (defn- interpret-stack-trace-element
   "Given the vector-of-syms form of a stacktrace element produced
 by e.g. Throwable->map, returns a map form that adds some keys
@@ -95,7 +100,8 @@ For non-Clojure fns, :scope and :local-fn will be absent."
            (when (and ns-sym name-sym)
              {:var-scope (symbol ns-sym name-sym)})
            (when local
-             {:local-fn (symbol (degensym local))}))))
+             {:local-fn (symbol (degensym local))
+              :thunk? (thunk-frame? local)}))))
 
 (defn- stacktrace-relevant-to-instrument
   "Takes a coll of stack trace elements (as returned by
@@ -103,8 +109,11 @@ StackTraceElement->vec) and returns a coll of maps as per
 interpret-stack-trace-element that are relevant to a
 failure in instrument."
   [elems]
-  (let [plumbing? (fn [{:keys [var-scope]}]
-                    (contains? '#{clojure.alpha.spec.test/spec-checking-fn} var-scope))]
+  (let [plumbing? (fn [{:keys [var-scope thunk?]}]
+                    (or thunk?
+                        (contains? '#{clojure.alpha.spec.test/spec-checking-fn
+                                      clojure.core/apply}
+                                   var-scope)))]
     (sequence (comp (map StackTraceElement->vec)
                     (map interpret-stack-trace-element)
                     (filter :var-scope)
@@ -112,29 +121,33 @@ failure in instrument."
               elems)))
 
 (defn- spec-checking-fn
-  [v f fn-spec]
+  "Takes a function name, a function f, and an fspec and returns a thunk that
+  first conforms the arguments given then calls f with those arguments if
+  the conform succeeds. Otherwise, an exception is thrown containing information
+  about the conform failure."
+  [fn-name f fn-spec]
   (let [fn-spec (@#'clojure.alpha.spec.impl/maybe-spec fn-spec)
-        conform! (fn [v role spec data args]
+        conform! (fn [fn-name role spec data args]
                    (let [conformed (s/conform spec data)]
                      (if (= ::s/invalid conformed)
                        (let [caller (->> (.getStackTrace (Thread/currentThread))
                                          stacktrace-relevant-to-instrument
                                          first)
                              ed (merge (assoc (s/explain-data* spec [] [] [] data nil nil)
-                                         ::sa/fn (symbol v)
-                                         ::sa/args args
-                                         ::sa/failure :instrument)
+                                         ::s/fn fn-name
+                                         ::s/args args
+                                         ::s/failure :instrument)
                                        (when caller
                                          {::caller (dissoc caller :class :method)}))]
                          (throw (ex-info
-                                 (str "Call to " v " did not conform to spec.")
+                                 (str "Call to " fn-name " did not conform to spec.")
                                  ed)))
                        conformed)))]
     (fn
      [& args]
      (if *instrument-enabled*
        (with-instrument-disabled
-         (when (:args fn-spec) (conform! v :args (:args fn-spec) args args))
+         (when (:args fn-spec) (conform! fn-name :args (:args fn-spec) args args))
          (binding [*instrument-enabled* true]
            (.applyTo ^clojure.lang.IFn f args)))
        (.applyTo ^clojure.lang.IFn f args)))))
@@ -145,6 +158,105 @@ failure in instrument."
            {:var v :spec spec ::sa/failure :no-fspec}))
 
 (defonce ^:private instrumented-vars (atom {}))
+
+(defn- find-varargs-decl
+  "Takes an arglist and returns the restargs binding form if found, else nil."
+  [arglist]
+  (let [[_ decl :as restargs] (->> arglist
+                                   (split-with (complement #{'&}))
+                                   second)]
+    (and (= 2 (count restargs))
+         decl)))
+
+(defn- has-kwargs? [arglists]
+  (->> arglists (some find-varargs-decl) map?))
+
+(defn- kwargs->kvs
+  "Takes the restargs of a kwargs function call and checks for a trailing element.
+  If found, that element is flattened into a sequence of key->value pairs and
+  concatenated onto the preceding arguments."
+  [args]
+  (if (even? (count args))
+     args
+     (concat (butlast args)
+             (reduce-kv (fn [acc k v] (->> acc (cons v) (cons k)))
+                        ()
+                        (last args)))))
+
+(defn- gen-fixed-args-syms
+  "Takes an arglist and generates a vector of names corresponding to the fixed
+  args found."
+  [arglist]
+  (->> arglist (take-while (complement #{'&})) (map (fn [_] (gensym))) vec))
+
+(defn- build-kwargs-body
+  "Takes a function name fn-name and arglist and returns code for a function body that
+  handles kwargs by calling fn-name with any fixed followed by its restargs transformed
+  from kwargs to kvs."
+  [fn-name arglist]
+  (let [alias (gensym "kwargs")
+        head-args (gen-fixed-args-syms arglist)]
+    (list (conj head-args '& alias)
+          `(apply ~fn-name ~@head-args (@#'kwargs->kvs ~alias)))))
+
+(defn- build-varargs-body
+  "Takes a function name fn-name and arglist and returns code for a function body that
+  handles varargs by calling fn-name with any fixed args followed by its rest args."
+  [fn-name arglist]
+  (let [head-args (gen-fixed-args-syms arglist)
+        alias  (gensym "restargs")]
+    (list (conj head-args '& alias)
+          `(apply ~fn-name ~@head-args ~alias))))
+
+(defn- build-fixed-args-body
+  "Takes a function name fn-name and arglist and returns code for a function body that
+  handles fixed args by calling fn-name with its fixed args."
+  [fn-name arglist]
+  (let [arglist (gen-fixed-args-syms arglist)]
+    (list arglist
+          `(~fn-name ~@arglist))))
+
+(defn- build-flattener-code
+  "Takes argslists and generates code for a HOF that given a function, returns a forwarding thunk
+  of analogous arglists that ensures that kwargs are passed as kvs to the original function."
+  [arglists]
+  (let [closed-over-name (gensym "inner")]
+    `(fn [~closed-over-name]
+       (fn ~(symbol kvs-emu-name)
+         ~@(map (fn [arglist]
+                  (let [varargs-decl (find-varargs-decl arglist)]
+                    (cond (map? varargs-decl) (build-kwargs-body     closed-over-name arglist)
+                          varargs-decl        (build-varargs-body    closed-over-name arglist)
+                          :default            (build-fixed-args-body closed-over-name arglist))))
+                (or arglists
+                    '([& args])))))))
+
+(comment
+  ;; Given a function with the arglists (([a]) ([a b]) ([a b & kvs]))
+  ;; the flattener generated is below (with some gensym name cleanup for readability)
+  (fn [inner]
+    (fn
+      ([G__a] (inner G__a))
+      ([G__a G__b] (inner G__a G__b))
+      ([G__a G__b & G__kvs]
+       (apply inner G__a G__b (if (even? (count G__kvs))
+                                G__kvs
+                                (reduce-kv (fn [acc k v]
+                                             (->> acc (cons v) (cons k)))
+                                                  (butlast G__kvs)
+                                                  (last G__kvs)))))))
+)
+
+(defn- maybe-wrap-kvs-emulation
+  "Takes an argslist and function f and returns f except when arglists
+  contains a kwargs binding, else wraps f with a forwarding thunk that
+  flattens a trailing map into kvs if present in the kwargs call."
+  [f arglists]
+  (if (has-kwargs? arglists)
+    (let [flattener-code (build-flattener-code arglists)
+          kvs-emu (eval flattener-code)]
+      (kvs-emu f))
+    f))
 
 (defn- instrument-choose-fn
   "Helper for instrument."
@@ -169,9 +281,11 @@ failure in instrument."
             ospec (or (instrument-choose-spec spec s opts)
                       (throw (no-fspec v spec)))
             ofn (instrument-choose-fn to-wrap ospec s opts)
-            checked (spec-checking-fn v ofn ospec)]
-        (alter-var-root v (constantly checked))
-        (swap! instrumented-vars assoc v {:raw to-wrap :wrapped checked})
+            checked (spec-checking-fn (symbol v) ofn ospec)
+            arglists (->> v meta :arglists (sort-by count) seq)
+            wrapped (maybe-wrap-kvs-emulation checked arglists)]
+        (alter-var-root v (constantly wrapped))
+        (swap! instrumented-vars assoc v {:raw to-wrap :wrapped wrapped})
         (symbol v)))))
 
 (defn- unstrument-1
