@@ -680,7 +680,7 @@
 
   There are also -un versions of :req and :opt. These allow
   you to connect unqualified keys to specs.  In each case, fully
-  qualfied keywords are passed, which name the specs, but unqualified
+  qualified keywords are passed, which name the specs, but unqualified
   keys (with the same name component) are expected and checked at
   conform-time, and generated during gen:
 
