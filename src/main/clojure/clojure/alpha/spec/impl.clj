@@ -414,7 +414,7 @@
         ks (filter keyword? coll)
         qks (zipmap ks ks)
         unq-map (apply merge (filter map? coll))
-        unq-specs (map s/resolve-spec (vals unq-map))
+        unq-specs (map #(if (qualified-keyword? %) % (s/resolve-spec %)) (vals unq-map))
         uqks (zipmap (keys unq-map) unq-specs)
         key-specs (merge uqks qks)
         lookup #(or (s/get-spec %) (get key-specs %))]
