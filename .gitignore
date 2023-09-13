@@ -3,5 +3,7 @@
 *.iml
 /target/
 .lein*
+.clj-kondo/
+.lsp/
 .nrepl-port
 .cpcache
