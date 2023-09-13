@@ -1,7 +1,8 @@
 {:paths ["src/main/clojure"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}}
  :aliases
- {:test
-  {:extra-deps
-   {org.clojure/test.check {:mvn/version "1.1.0"}}}}}
+ {:test {:extra-deps {org.clojure/test.check {:mvn/version "1.1.0"}}
+         :extra-paths ["src/test/clojure"]}
+  :perf {:extra-deps {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.5"}}
+         :jvm-opts ["-Djdk.attach.allowAttachSelf"]}}}
 
